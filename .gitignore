@@ -1,0 +1,27 @@
+# Environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Dependencies and generated output
+node_modules/
+vendor/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+dist/
+build/
+.next/
+target/
+
+# Temporary files and OS metadata
+*.tmp
+*.swp
+*~
+.DS_Store
+Thumbs.db
