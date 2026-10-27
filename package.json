@@ -2,6 +2,23 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node test/create-yawrd.test.ts"
+    "test": "node test/create-yawrd.test.ts",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "postcss": "^8.5.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.9.0"
   }
 }
