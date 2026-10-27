@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { buildYawrdCreation, type CreationInput, type CreationPlan } from "../src/create-yawrd";
 import { BuoyMark } from "./components/buoy-mark";
+import { useTestnetWallet } from "./use-testnet-wallet";
 
-const MOCK_CREATOR = "creator.demo.near";
+// Existing illustrative address; no Testnet factory deployment is verified here.
 const PREVIEW_FACTORY = "sputnik-dao.near";
 const STEP_TITLES = ["Yawrd Details", "Yawrd Stewards", "Yawrd Review"] as const;
 
@@ -22,6 +23,7 @@ function getFieldForError(message: string): string {
   if (message.startsWith("Project account label") || message.startsWith("New DAO account ID")) return "label";
   if (message.startsWith("Steward approval threshold")) return "threshold";
   if (message.startsWith("Steward account ID") || message.startsWith("Duplicate Steward")) return "stewards";
+  if (message.startsWith("Connect Meteor Wallet")) return "creator";
   return "general";
 }
 
@@ -42,7 +44,9 @@ function PlusIcon() {
 }
 
 export default function OpenYawrdPage() {
+  const wallet = useTestnetWallet();
   const stepsNavRef = useRef<HTMLElement>(null);
+  const previousCreator = useRef(wallet.accountId);
   const [step, setStep] = useState<Step>(1);
   const [name, setName] = useState("The Common Table");
   const [purpose, setPurpose] = useState("A shared place to bring neighbors together around food, ideas, and small projects that make our corner of the city feel more connected.");
@@ -52,22 +56,34 @@ export default function OpenYawrdPage() {
   const [threshold, setThreshold] = useState("2");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const result = useMemo<{ plan: CreationPlan | null; error: string | null }>(() => {
+  useEffect(() => {
+    if (previousCreator.current !== wallet.accountId) {
+      previousCreator.current = wallet.accountId;
+      setStep((current) => current === 3 ? 2 : current);
+    }
+  }, [wallet.accountId]);
+
+  const result = useMemo<{ plan: CreationPlan | null; preview: CreationPlan | null; error: string | null }>(() => {
     const input: CreationInput = {
       projectName: name,
       projectPurpose: purpose,
       projectAccountLabel: label,
-      creatorAccountId: MOCK_CREATOR,
+      // A placeholder runs the existing field validation while disconnected;
+      // its plan is never exposed or used as a creation plan.
+      creatorAccountId: wallet.accountId ?? "preview-creator.testnet",
       initialStewardAccountIds: additionalStewards,
       stewardApprovalThreshold: Number(threshold),
       factoryAccountId: PREVIEW_FACTORY,
     };
     try {
-      return { plan: buildYawrdCreation(input), error: null };
+      const plan = buildYawrdCreation(input);
+      return wallet.accountId
+        ? { plan, preview: plan, error: null }
+        : { plan: null, preview: plan, error: "Connect Meteor Wallet on Testnet to include your creator account." };
     } catch (error) {
-      return { plan: null, error: error instanceof Error ? error.message : "The preview could not be prepared." };
+      return { plan: null, preview: null, error: error instanceof Error ? error.message : "The preview could not be prepared." };
     }
-  }, [name, purpose, label, additionalStewards, threshold]);
+  }, [name, purpose, label, additionalStewards, threshold, wallet.accountId]);
 
   const errorField = result.error ? getFieldForError(result.error) : null;
   const showError = (field: string) => Boolean(errorField === field && touched[field]);
@@ -84,7 +100,7 @@ export default function OpenYawrdPage() {
       setTouched((current) => ({ ...current, name: true, purpose: true, label: true }));
       // The builder checks project details before crew fields, so later-field errors
       // do not block this step. All validation still comes from the builder.
-      if (!result.error || errorField === "stewards" || errorField === "threshold") goToStep(2);
+      if (!result.error || errorField === "creator" || errorField === "stewards" || errorField === "threshold") goToStep(2);
     } else if (step === 2) {
       setTouched((current) => ({ ...current, stewards: true, threshold: true }));
       if (result.plan) goToStep(3);
@@ -102,8 +118,17 @@ export default function OpenYawrdPage() {
             <BuoyMark className="size-9 shrink-0" />
             <span className="text-[22px] font-semibold tracking-[-0.06em]">yawrd<span className="text-[#73aaa5]">.</span></span>
           </div>
-          <span className="rounded-full border border-[#3d8c8a]/50 bg-[#3d8c8a]/10 px-3 py-2 text-[11px] font-semibold text-[#c2dedd]">Local preview</span>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full border border-[#3d8c8a]/50 bg-[#3d8c8a]/10 px-3 py-2 text-[11px] font-semibold text-[#c2dedd]">Testnet · Local preview</span>
+            {wallet.accountId ? (
+              <button type="button" onClick={wallet.disconnect} disabled={wallet.busy} className="rounded-xl border border-[#456058] px-3 py-2 text-xs font-medium text-[#d6e6df] hover:border-[#c2dedd] disabled:opacity-50">Disconnect</button>
+            ) : (
+              <button type="button" onClick={wallet.connect} disabled={!wallet.ready || !wallet.available || wallet.busy} className="rounded-xl border border-[#456058] px-3 py-2 text-xs font-medium text-[#d6e6df] hover:border-[#c2dedd] disabled:opacity-50">{wallet.busy ? "Connecting…" : "Connect Meteor"}</button>
+            )}
+          </div>
         </header>
+        {wallet.error && <p role="alert" className="mt-4 field-error">{wallet.error}</p>}
+        {wallet.ready && !wallet.available && <p role="alert" className="mt-4 field-error">Meteor Wallet is unavailable for Testnet connection.</p>}
 
         <section className="pb-9 pt-12 sm:pb-12 sm:pt-16 lg:pt-[72px]">
           <h1 className="max-w-[900px] text-[clamp(3.15rem,6vw,5.8rem)] leading-[1.02] font-medium tracking-[-0.065em] text-white">Create your Yawrd</h1>
@@ -162,10 +187,12 @@ export default function OpenYawrdPage() {
                 <div>
                   <span className="field-label">Creator account</span>
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-[#3d8c8a]/35 bg-[#3d8c8a]/[0.08] px-4 py-3.5">
-                    <span className="truncate font-mono text-[13px] text-[#c7e1dc]">{MOCK_CREATOR}</span>
-                    <span className="shrink-0 rounded-md bg-[#3d8c8a]/20 px-2 py-1 text-[10px] font-semibold text-[#a9d8d3]">Mock account</span>
+                    <span className="truncate font-mono text-[13px] text-[#c7e1dc]">{wallet.accountId ?? "No account connected"}</span>
+                    <span className="shrink-0 rounded-md bg-[#3d8c8a]/20 px-2 py-1 text-[10px] font-semibold text-[#a9d8d3]">Testnet</span>
                   </div>
-                  <p className="field-help">Included as the first Steward. No wallet is connected.</p>
+                  {wallet.accountIds.length > 1 && <select aria-label="Creator account" value={wallet.accountId ?? ""} onChange={(event) => wallet.selectAccount(event.target.value)} className={`${inputClass} mt-3`}>{wallet.accountIds.map((account) => <option key={account} value={account}>{account}</option>)}</select>}
+                  <p className="field-help">{wallet.accountId ? "Your connected account is included as the first Steward." : "Connect Meteor Wallet to include your Testnet account as the first Steward."}</p>
+                  {showError("creator") && <p role="alert" className="field-error">{result.error}</p>}
                 </div>
                 <div>
                   <span className="field-label">Additional Stewards <span className="font-normal text-[#78958e]">(optional)</span></span>
@@ -198,7 +225,7 @@ export default function OpenYawrdPage() {
                   <dl className="space-y-5 rounded-2xl border border-white/[0.09] bg-[#14221f] p-5 sm:p-6">
                     <div><dt className="review-label">Project name</dt><dd className="mt-1 text-xl font-medium text-[#e8f2ee]">{result.plan.initializer.config.name}</dd></div>
                     <div><dt className="review-label">Short description</dt><dd className="mt-1 text-sm leading-7 text-[#bed1c9]">{result.plan.initializer.config.purpose}</dd></div>
-                    <div><dt className="review-label">Project address preview</dt><dd className="mt-1 break-all font-mono text-sm text-[#b8d9d2]">{result.plan.daoAccountId}</dd></div>
+                    <div><dt className="review-label">Example project address</dt><dd className="mt-1 break-all font-mono text-sm text-[#b8d9d2]">{result.plan.daoAccountId}</dd></div>
                   </dl>
                 </div>
                 <div>
@@ -207,7 +234,7 @@ export default function OpenYawrdPage() {
                     <p className="review-label">Stewards</p>
                     <ul className="mt-3 flex flex-wrap gap-2">
                       {result.plan.initializer.policy.roles[0].kind.Group.map((account, index) => (
-                        <li key={account} className="rounded-full border border-[#64938a]/35 bg-[#25413a]/60 px-3 py-1.5 text-xs text-[#d0e4dd]">{index === 0 ? "Mock creator · " : ""}{account}</li>
+                        <li key={account} className="rounded-full border border-[#64938a]/35 bg-[#25413a]/60 px-3 py-1.5 text-xs text-[#d0e4dd]">{index === 0 ? "Creator · " : ""}{account}</li>
                       ))}
                     </ul>
                     <p className="mt-5 text-sm leading-6 text-[#c7ddd5]"><strong className="font-semibold text-white">{result.plan.initializer.policy.default_vote_policy.threshold} of {result.plan.initializer.policy.roles[0].kind.Group.length} Stewards</strong> must approve decisions for this Yawrd.</p>
@@ -215,7 +242,7 @@ export default function OpenYawrdPage() {
                 </div>
                 <div className="rounded-2xl border border-[#5b918c]/40 bg-[#3d8c8a]/[0.1] p-5 sm:p-6">
                   <p className="font-medium text-[#d6eee8]">Local preview only</p>
-                  <p className="mt-2 text-sm leading-6 text-[#abc8bf]">No Yawrd has been opened or funded. This page does not connect a wallet or submit anything.</p>
+                  <p className="mt-2 text-sm leading-6 text-[#abc8bf]">No Yawrd has been opened or funded. Connecting selects your Testnet account. The example project address is not a verified Testnet address. This page does not request an access key or submit a transaction.</p>
                   <p className="mt-3 text-xs leading-6 text-[#a9c3b9]">Opening a Yawrd later will require wallet approval and network costs. Stewards must then approve turning off automatic updates; those updates stay on until approval.</p>
                 </div>
               </div>
@@ -236,13 +263,13 @@ export default function OpenYawrdPage() {
                 <div aria-hidden="true" className="preview-art h-20 border-b border-white/[0.08] sm:h-24" />
                 <div className="p-6 sm:p-8">
                   <h2 id="preview-title" className="text-base font-medium text-white">Live preview</h2>
-                  {result.plan ? (
+                  {result.preview ? (
                     <div className="mt-5">
-                      <p className="text-[clamp(1.9rem,3vw,3rem)] leading-[1.08] font-medium tracking-[-0.06em] text-[#e7f2ed]">{result.plan.initializer.config.name}</p>
-                      <p className="mt-3 text-sm leading-7 text-[#a8c0b8]">{result.plan.initializer.config.purpose}</p>
+                      <p className="text-[clamp(1.9rem,3vw,3rem)] leading-[1.08] font-medium tracking-[-0.06em] text-[#e7f2ed]">{result.preview.initializer.config.name}</p>
+                      <p className="mt-3 text-sm leading-7 text-[#a8c0b8]">{result.preview.initializer.config.purpose}</p>
                       <div className="my-6 h-px bg-white/[0.1]" />
-                      <p className="break-all font-mono text-xs leading-6 text-[#b9d7d0]">{result.plan.daoAccountId}</p>
-                      <p className="mt-4 text-sm text-[#c6ded5]">{result.plan.initializer.policy.roles[0].kind.Group.length} Stewards · {result.plan.initializer.policy.default_vote_policy.threshold} approvals needed</p>
+                      <p className="break-all font-mono text-xs leading-6 text-[#b9d7d0]">{result.preview.daoAccountId}</p>
+                      <p className="mt-4 text-sm text-[#c6ded5]">{result.preview.initializer.policy.roles[0].kind.Group.length} Stewards · {result.preview.initializer.policy.default_vote_policy.threshold} approvals needed</p>
                     </div>
                   ) : (
                     <div className="mt-5 rounded-xl border border-[#8b6f63]/40 bg-[#583a30]/20 p-5">
@@ -251,7 +278,7 @@ export default function OpenYawrdPage() {
                     </div>
                   )}
                 </div>
-                <p className="border-t border-white/[0.08] bg-[#12201d] px-6 py-4 text-xs leading-5 text-[#91aca4] sm:px-8">Local preview only · Nothing has been opened or funded</p>
+                <p className="border-t border-white/[0.08] bg-[#12201d] px-6 py-4 text-xs leading-5 text-[#91aca4] sm:px-8">Example address is not verified on Testnet · Nothing has been opened or funded</p>
               </div>
             </aside>
           )}
