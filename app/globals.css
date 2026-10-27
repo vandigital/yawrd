@@ -2,16 +2,12 @@
 
 :root { color-scheme: dark; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: #0d1716; font-family: Arial, Helvetica, sans-serif; }
+body { margin: 0; background: #0d1716; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 button, input, textarea { font: inherit; }
 button { cursor: pointer; }
 .grid-texture { background-image: linear-gradient(rgba(149, 205, 193, .045) 1px, transparent 1px), linear-gradient(90deg, rgba(149, 205, 193, .045) 1px, transparent 1px); background-size: 88px 88px; mask-image: linear-gradient(to bottom, black, transparent 75%); }
-.field-label { display: block; margin-bottom: 10px; color: #c7d8d2; font-size: 13px; font-weight: 600; }
-.field-help { margin-top: 9px; color: #839a92; font-size: 12px; line-height: 1.6; }
+.field-label { display: block; margin-bottom: 10px; color: #d2e1d9; font-size: 13px; font-weight: 600; }
+.field-help { margin-top: 9px; color: #9cb3aa; font-size: 12px; line-height: 1.6; }
 .field-error { margin-top: 9px; color: #e8ac9b; font-size: 12px; line-height: 1.6; }
-.preview-label { color: #88ada4; font-size: 10px; font-weight: 700; letter-spacing: .17em; text-transform: uppercase; }
-.preview-art { background: radial-gradient(circle at 77% 24%, rgba(195, 225, 213, .25), transparent 35%), radial-gradient(circle at 29% 89%, rgba(12, 36, 31, .9), transparent 47%), linear-gradient(125deg, #3d8c8a, #315c56 47%, #122c29); }
-.preview-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 49.5%, rgba(214,247,232,.08) 50%, transparent 50.5%), linear-gradient(transparent 49.5%, rgba(214,247,232,.08) 50%, transparent 50.5%); background-size: 48px 48px; }
-.preview-orbit { position: absolute; width: 260px; height: 260px; left: 50%; top: 52%; border: 1px solid rgba(226,255,243,.28); border-radius: 50%; transform: translate(-50%,-50%) rotateX(58deg) rotate(-23deg); }
-.preview-orbit-two { width: 390px; height: 390px; border-color: rgba(226,255,243,.17); }
-.preview-orbit-three { width: 540px; height: 540px; border-color: rgba(226,255,243,.1); }
+.review-label { color: #91b5aa; font-size: 12px; font-weight: 600; }
+.preview-art { background: radial-gradient(circle at 78% 0%, rgba(194, 222, 221, .24), transparent 45%), linear-gradient(115deg, #3d8c8a, #285650 70%, #193b36); }
