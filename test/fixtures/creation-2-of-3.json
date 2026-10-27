@@ -1,0 +1,22 @@
+{
+  "config": {
+    "name": "Build Café",
+    "purpose": "Make useful tools together",
+    "metadata": ""
+  },
+  "policy": {
+    "roles": [
+      {
+        "name": "Stewards",
+        "kind": { "Group": ["alice.near", "bob.near", "carol.near"] },
+        "permissions": ["*:AddProposal", "*:VoteApprove", "*:VoteReject", "*:VoteRemove", "*:Finalize"],
+        "vote_policy": {}
+      }
+    ],
+    "default_vote_policy": { "weight_kind": "RoleWeight", "quorum": "2", "threshold": "2" },
+    "proposal_bond": "0",
+    "proposal_period": "604800000000000",
+    "bounty_bond": "1000000000000000000000000",
+    "bounty_forgiveness_period": "86400000000000"
+  }
+}
