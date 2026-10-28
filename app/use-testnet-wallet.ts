@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NearConnector } from "@hot-labs/near-connect";
 import { initialWalletState, TestnetWalletSession } from "./wallet-session";
+import type { CreationTransaction } from "../src/creation-integration";
 
 let connectorPromise: Promise<NearConnector> | undefined;
 
@@ -50,6 +51,11 @@ export function useTestnetWallet() {
   const connect = useCallback(() => { void sessionRef.current?.connect(); }, []);
   const disconnect = useCallback(() => { void sessionRef.current?.disconnect(); }, []);
   const selectAccount = useCallback((accountId: string) => { sessionRef.current?.selectAccount(accountId); }, []);
+  const getContext = useCallback(() => ({ accountId: sessionRef.current?.snapshot.accountId ?? null, network: sessionRef.current?.network ?? "unknown" }), []);
+  const signCreation = useCallback((tx: CreationTransaction) => {
+    if (!sessionRef.current) return Promise.reject(new Error("Connect Meteor Wallet first."));
+    return sessionRef.current.signCreation(tx);
+  }, []);
 
-  return { ...state, connect, disconnect, selectAccount };
+  return { ...state, connect, disconnect, selectAccount, getContext, signCreation };
 }

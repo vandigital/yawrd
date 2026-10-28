@@ -1,4 +1,5 @@
 import type { Account, NearConnector } from "@hot-labs/near-connect";
+import type { CreationTransaction } from "../src/creation-integration.ts";
 
 const METEOR_WALLET_ID = "meteor-wallet";
 
@@ -32,6 +33,21 @@ export class TestnetWalletSession {
   }
 
   get snapshot(): WalletState { return this.state; }
+
+  get network(): string { return this.connector.network; }
+
+  async signCreation(transaction: CreationTransaction) {
+    if (!this.active || this.state.busy || !this.state.ready || this.connector.network !== "testnet" || transaction.network !== "testnet" || this.state.accountId !== transaction.signerId) {
+      throw new Error("Wallet account or network changed. Review again.");
+    }
+    const revision = this.revision;
+    const { wallet } = await this.connector.getConnectedWallet();
+    const accounts = await wallet.getAccounts({ network: "testnet" });
+    if (!this.active || revision !== this.revision || this.connector.network !== "testnet" || this.state.accountId !== transaction.signerId || wallet !== this.meteorWallet || !this.meteorIsAvailable() || !accounts.some((account) => account.accountId === transaction.signerId)) {
+      throw new Error("Wallet account or network changed. Review again.");
+    }
+    return wallet.signAndSendTransaction(transaction);
+  }
 
   private update(change: Partial<WalletState>) {
     if (!this.active) return;

@@ -56,7 +56,7 @@ function requireAccountId(value: string, field: string): void {
   }
 }
 
-function encodeBase64Utf8(value: string): string {
+export function encodeBase64Utf8(value: string): string {
   const bytes = new TextEncoder().encode(value);
   let result = "";
   for (let i = 0; i < bytes.length; i += 3) {

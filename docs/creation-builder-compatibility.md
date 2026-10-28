@@ -1,5 +1,12 @@
 # Creation builder compatibility
 
+Milestone 05.1 now implements the application creation pathway around these
+existing payloads. See [the integration report](milestone-05.1.md) for factory
+requirements, local verification, and the remaining deployed-compatibility gate.
+The historical fixture-only scope described below does not describe the new
+integration tests. Native initialization and governance evidence is recorded
+separately in the supplied 04.1A–D verification workspace.
+
 The fixture files under `test/fixtures/` independently specify the expected JSON
 initializer for one Steward and for two approvals among three Stewards. Tests
 compare the builder's object, serialized UTF-8 JSON, and base64 factory argument

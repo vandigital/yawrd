@@ -3,6 +3,7 @@ import test from "node:test";
 import type { Account, NearConnector } from "@hot-labs/near-connect";
 import { TestnetWalletSession } from "../app/wallet-session.ts";
 import { buildYawrdCreation } from "../src/create-yawrd.ts";
+import type { CreationTransaction } from "../src/creation-integration.ts";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -14,6 +15,12 @@ class FakeWallet {
   manifest = { id: "meteor-wallet" };
   accounts: Account[] = [];
   network: string | undefined;
+  signed: CreationTransaction[] = [];
+
+  async signAndSendTransaction(transaction: CreationTransaction) {
+    this.signed.push(transaction);
+    return { transaction: { hash: "mock-wallet-hash" } };
+  }
 
   async getAccounts({ network }: { network: string }) {
     this.network = network;
@@ -22,6 +29,7 @@ class FakeWallet {
 }
 
 class FakeConnector {
+  network = "testnet";
   whenManifestLoaded = Promise.resolve();
   availableWallets: FakeWallet[] = [];
   wallet = new FakeWallet();
@@ -295,4 +303,40 @@ test("cleanup invalidates pending refresh and ignores later events", async () =>
   fake.emit("wallet:signOut", {});
   assert.equal(session.snapshot.accountId, "alice.testnet");
   assert.equal(fake.listenerCount("wallet:signOut"), 0);
+});
+
+const transaction: CreationTransaction = {
+  network: "testnet", signerId: "alice.testnet", receiverId: "fixture-factory.testnet",
+  actions: [{ type: "FunctionCall", params: { methodName: "create", args: { name: "fixture", args: "e30=" }, deposit: "10000000000000000000000", gas: "100000000000000" } }],
+};
+
+test("creation adapter reuses Meteor and sends an explicit Testnet signer and action", async () => {
+  const fake = new FakeConnector(); fake.availableWallets = [fake.wallet]; fake.wallet.accounts = [{ accountId: "alice.testnet" }];
+  const session = makeSession(fake); await session.start(); await session.connect();
+  assert.equal(fake.wallet.signed.length, 0);
+  assert.deepEqual(await session.signCreation(transaction), { transaction: { hash: "mock-wallet-hash" } });
+  assert.deepEqual(fake.wallet.signed, [transaction]); session.stop();
+});
+
+test("creation adapter blocks disconnected wallets, wrong network and changed signer", async () => {
+  const fake = new FakeConnector(); fake.availableWallets = [fake.wallet];
+  const session = makeSession(fake); await session.start();
+  await assert.rejects(session.signCreation(transaction), /changed/);
+  fake.wallet.accounts = [{ accountId: "alice.testnet" }]; await session.refresh();
+  fake.network = "mainnet"; await assert.rejects(session.signCreation(transaction), /changed/);
+  fake.network = "testnet"; await assert.rejects(session.signCreation({ ...transaction, signerId: "other.testnet" }), /changed/);
+  assert.equal(fake.wallet.signed.length, 0); session.stop();
+});
+
+test("creation adapter rechecks wallet accounts and network after async lookup", async () => {
+  for (const changed of ["account", "network"]) {
+    const fake = new FakeConnector(); fake.availableWallets = [fake.wallet]; fake.wallet.accounts = [{ accountId: "alice.testnet" }];
+    const session = makeSession(fake); await session.start();
+    const lookup = deferred<{ wallet: FakeWallet }>(); fake.getConnected = () => lookup.promise;
+    const signing = session.signCreation(transaction);
+    if (changed === "network") fake.network = "mainnet";
+    else fake.wallet.accounts = [{ accountId: "bob.testnet" }];
+    lookup.resolve({ wallet: fake.wallet }); await assert.rejects(signing, /changed/);
+    assert.equal(fake.wallet.signed.length, 0); session.stop();
+  }
 });

@@ -2,7 +2,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.ts",
+    "test": "node --test test/create-yawrd.test.ts test/wallet-session.test.ts test/creation-integration.test.ts",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "typecheck": "tsc --noEmit"

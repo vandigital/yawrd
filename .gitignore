@@ -27,3 +27,29 @@ target/
 *~
 .DS_Store
 Thumbs.db
+
+# Wallet and account credentials (public fixtures must use explicit safe names)
+.near-credentials/
+.near/
+credentials/
+credentials.json
+credentials.*.json
+wallet.json
+wallet.*.json
+*keystore*.json
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+.npmrc
+.netrc
+.pypirc
+
+# Local hosting metadata and operational evidence
+.vercel/
+/docs/verification/
+
+# Rig-only unsigned factory review (requires local evidence and artifact)
+/src/factory-deployment-review.ts
+/test/factory-deployment-review.test.ts
+/tools/factory-deployment-review.ts

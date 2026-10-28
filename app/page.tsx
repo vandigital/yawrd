@@ -4,9 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { buildYawrdCreation, type CreationInput, type CreationPlan } from "../src/create-yawrd";
 import { BuoyMark } from "./components/buoy-mark";
 import { useTestnetWallet } from "./use-testnet-wallet";
+import { CreationPanel } from "./components/creation-panel";
+import { testnetFactorySettings } from "../src/testnet-factory-settings";
 
 // Existing illustrative address; no Testnet factory deployment is verified here.
 const PREVIEW_FACTORY = "sputnik-dao.near";
+const CREATION_FACTORY = testnetFactorySettings?.factoryAccountId ?? PREVIEW_FACTORY;
 const STEP_TITLES = ["Yawrd Details", "Yawrd Stewards", "Yawrd Review"] as const;
 
 type Step = 1 | 2 | 3;
@@ -73,7 +76,7 @@ export default function OpenYawrdPage() {
       creatorAccountId: wallet.accountId ?? "preview-creator.testnet",
       initialStewardAccountIds: additionalStewards,
       stewardApprovalThreshold: Number(threshold),
-      factoryAccountId: PREVIEW_FACTORY,
+      factoryAccountId: CREATION_FACTORY,
     };
     try {
       const plan = buildYawrdCreation(input);
@@ -225,7 +228,7 @@ export default function OpenYawrdPage() {
                   <dl className="space-y-5 rounded-2xl border border-white/[0.09] bg-[#14221f] p-5 sm:p-6">
                     <div><dt className="review-label">Project name</dt><dd className="mt-1 text-xl font-medium text-[#e8f2ee]">{result.plan.initializer.config.name}</dd></div>
                     <div><dt className="review-label">Short description</dt><dd className="mt-1 text-sm leading-7 text-[#bed1c9]">{result.plan.initializer.config.purpose}</dd></div>
-                    <div><dt className="review-label">Example project address</dt><dd className="mt-1 break-all font-mono text-sm text-[#b8d9d2]">{result.plan.daoAccountId}</dd></div>
+                    <div><dt className="review-label">{testnetFactorySettings ? "Intended project address" : "Example project address"}</dt><dd className="mt-1 break-all font-mono text-sm text-[#b8d9d2]">{result.plan.daoAccountId}</dd></div>
                   </dl>
                 </div>
                 <div>
@@ -241,9 +244,9 @@ export default function OpenYawrdPage() {
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[#5b918c]/40 bg-[#3d8c8a]/[0.1] p-5 sm:p-6">
-                  <p className="font-medium text-[#d6eee8]">Local preview only</p>
-                  <p className="mt-2 text-sm leading-6 text-[#abc8bf]">No Yawrd has been opened or funded. Connecting selects your Testnet account. The example project address is not a verified Testnet address. This page does not request an access key or submit a transaction.</p>
-                  <p className="mt-3 text-xs leading-6 text-[#a9c3b9]">Opening a Yawrd later will require wallet approval and network costs. Stewards must then approve turning off automatic updates; those updates stay on until approval.</p>
+                  <p className="font-medium text-[#d6eee8]">Review your Yawrd</p>
+                  <p className="mt-2 text-sm leading-6 text-[#abc8bf]">Connecting selects your Testnet account. Opening a Yawrd uses the separate setup review and wallet approval below. Testnet opening requires exactly two Stewards and two approvals.</p>
+                  <p className="mt-3 text-xs leading-6 text-[#a9c3b9]">Automatic updates begin enabled. Both Stewards must approve turning them off, followed by on-chain verification, before additional Project Funds can be enabled.</p>
                 </div>
               </div>
             )}
@@ -283,6 +286,7 @@ export default function OpenYawrdPage() {
             </aside>
           )}
         </div>
+        <CreationPanel visible={step === 3} input={{ projectName: name, projectPurpose: purpose, projectAccountLabel: label, creatorAccountId: wallet.accountId ?? "", initialStewardAccountIds: additionalStewards, stewardApprovalThreshold: Number(threshold), factoryAccountId: CREATION_FACTORY }} getWallet={wallet.getContext} sign={wallet.signCreation} />
 
       </div>
     </main>
