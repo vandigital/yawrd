@@ -2,13 +2,22 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test/create-yawrd.test.ts test/wallet-session.test.ts test/creation-integration.test.ts",
+    "test": "node --import ./test/register-tsx.mjs --test --test-isolation=none test/create-yawrd.test.ts test/wallet-session.test.ts test/creation-integration.test.ts test/public-yawrd.test.ts test/identity.test.ts test/participants.test.ts",
     "dev": "next dev --webpack",
+    "dev:identity": "YAWRD_ENABLE_DEV_IDENTITY=1 next dev --webpack --hostname 127.0.0.1",
     "build": "next build --webpack",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:verify": "node scripts/verify-database.mjs",
+    "db:configure:development": "node scripts/configure-development-runtime.mjs",
+    "db:verify:runtime": "node scripts/verify-runtime.mjs",
+    "db:seed:acceptance": "node scripts/seed-07b-acceptance.mjs",
+    "test:acceptance:local": "node scripts/check-07b-acceptance.mjs",
+    "test:participants:live": "node --import ./scripts/load-migration-environment.mjs --import ./test/register-tsx.mjs --test --test-isolation=none test/participants-live.test.ts"
   },
   "dependencies": {
     "@hot-labs/near-connect": "0.11.4",
+    "@neondatabase/serverless": "1.2.0",
     "next": "^16.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

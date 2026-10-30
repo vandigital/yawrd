@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { NearConnector } from "@hot-labs/near-connect";
+import type { NearConnector, SignMessageParams } from "@hot-labs/near-connect";
 import { initialWalletState, TestnetWalletSession } from "./wallet-session";
 import type { CreationTransaction } from "../src/creation-integration";
 
@@ -57,5 +57,10 @@ export function useTestnetWallet() {
     return sessionRef.current.signCreation(tx);
   }, []);
 
-  return { ...state, connect, disconnect, selectAccount, getContext, signCreation };
+  const signIdentity = useCallback((params: SignMessageParams & { signerId: string; network: "testnet" }) => {
+    if (!sessionRef.current) return Promise.reject(new Error("Connect Meteor Wallet first."));
+    return sessionRef.current.signIdentity(params);
+  }, []);
+
+  return { ...state, connect, disconnect, selectAccount, getContext, signCreation, signIdentity };
 }

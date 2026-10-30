@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { Account, NearConnector } from "@hot-labs/near-connect";
+import type { Account, NearConnector, SignMessageParams, SignedMessage } from "@hot-labs/near-connect";
 import { TestnetWalletSession } from "../app/wallet-session.ts";
 import { buildYawrdCreation } from "../src/create-yawrd.ts";
 import type { CreationTransaction } from "../src/creation-integration.ts";
@@ -16,6 +16,13 @@ class FakeWallet {
   accounts: Account[] = [];
   network: string | undefined;
   signed: CreationTransaction[] = [];
+  messageRequests: SignMessageParams[] = [];
+  signProof: (params: SignMessageParams) => Promise<SignedMessage> = async (params) => ({ accountId: params.signerId!, publicKey: "synthetic-key", signature: "synthetic-proof" });
+
+  async signMessage(params: SignMessageParams) {
+    this.messageRequests.push(params);
+    return this.signProof(params);
+  }
 
   async signAndSendTransaction(transaction: CreationTransaction) {
     this.signed.push(transaction);
@@ -339,4 +346,61 @@ test("creation adapter rechecks wallet accounts and network after async lookup",
     lookup.resolve({ wallet: fake.wallet }); await assert.rejects(signing, /changed/);
     assert.equal(fake.wallet.signed.length, 0); session.stop();
   }
+});
+
+const messageParams = { message: "local ownership check", recipient: "Yawrd", nonce: new Uint8Array(32), signerId: "alice.testnet", network: "testnet" as const };
+
+test("identity adapter reuses Meteor with explicit selected signer and Testnet, without a transaction", async () => {
+  const fake = new FakeConnector(); fake.availableWallets = [fake.wallet]; fake.wallet.accounts = [{ accountId: "alice.testnet" }];
+  const session = makeSession(fake); await session.start();
+  assert.equal(fake.wallet.messageRequests.length, 0);
+  const proof = await session.signIdentity(messageParams);
+  assert.equal(proof.accountId, "alice.testnet");
+  assert.deepEqual(fake.wallet.messageRequests, [messageParams]);
+  assert.equal(fake.wallet.signed.length, 0); assert.equal(session.snapshot.busy, false); session.stop();
+});
+
+test("identity adapter rejects wrong network, signer or disconnected account before requesting approval", async () => {
+  const fake = new FakeConnector(); fake.availableWallets = [fake.wallet];
+  const session = makeSession(fake); await session.start();
+  await assert.rejects(session.signIdentity(messageParams), /changed/);
+  fake.wallet.accounts = [{ accountId: "alice.testnet" }]; await session.refresh();
+  fake.network = "mainnet"; await assert.rejects(session.signIdentity(messageParams), /changed/);
+  fake.network = "testnet"; await assert.rejects(session.signIdentity({ ...messageParams, signerId: "bob.testnet" }), /changed/);
+  assert.equal(fake.wallet.messageRequests.length, 0); session.stop();
+});
+
+test("identity adapter rejects accounts changed during lookup or returned by Meteor", async () => {
+  for (const change of ["lookup", "returned", "network", "signout", "replaced", "revoked"]) {
+    const fake = new FakeConnector(); fake.availableWallets = [fake.wallet]; fake.wallet.accounts = [{ accountId: "alice.testnet" }];
+    const session = makeSession(fake); await session.start();
+    fake.wallet.signProof = async () => {
+      if (change === "network") fake.network = "mainnet";
+      if (change === "signout") fake.emit("wallet:signOut", {});
+      if (change === "replaced") { fake.availableWallets = [new FakeWallet()]; fake.emit("selector:walletsChanged", {}); }
+      if (change === "revoked") fake.wallet.accounts = [];
+      return { accountId: change === "returned" ? "bob.testnet" : "alice.testnet", publicKey: "key", signature: "proof" };
+    };
+    if (change === "lookup") fake.getConnected = async () => { fake.wallet.accounts = []; return { wallet: fake.wallet }; };
+    await assert.rejects(session.signIdentity(messageParams), /changed/);
+    if (change === "lookup") assert.equal(fake.wallet.messageRequests.length, 0);
+    assert.equal(session.snapshot.busy, false); session.stop();
+  }
+});
+
+test("pending identity approval blocks duplicate signing and safely handles wallet rejection", async () => {
+  const fake = new FakeConnector(); fake.availableWallets = [fake.wallet]; fake.wallet.accounts = [{ accountId: "alice.testnet" }, { accountId: "bob.testnet" }];
+  const session = makeSession(fake); await session.start();
+  const pending = deferred<SignedMessage>();
+  fake.wallet.signProof = () => pending.promise;
+  const signing = session.signIdentity(messageParams);
+  await assert.rejects(session.signIdentity(messageParams), /changed/);
+  session.selectAccount("bob.testnet"); assert.equal(session.snapshot.accountId, "alice.testnet");
+  // Browser focus after a popup must not invalidate an unchanged selection.
+  await session.refresh();
+  pending.resolve({ accountId: "alice.testnet", publicKey: "key", signature: "proof" });
+  await signing;
+  fake.wallet.signProof = async () => { throw new Error("human declined"); };
+  await assert.rejects(session.signIdentity(messageParams), /human declined/);
+  assert.equal(session.snapshot.busy, false); assert.equal(fake.wallet.signed.length, 0); session.stop();
 });

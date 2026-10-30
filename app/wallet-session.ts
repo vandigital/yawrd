@@ -1,4 +1,4 @@
-import type { Account, NearConnector } from "@hot-labs/near-connect";
+import type { Account, NearConnector, SignMessageParams } from "@hot-labs/near-connect";
 import type { CreationTransaction } from "../src/creation-integration.ts";
 
 const METEOR_WALLET_ID = "meteor-wallet";
@@ -35,6 +35,26 @@ export class TestnetWalletSession {
   get snapshot(): WalletState { return this.state; }
 
   get network(): string { return this.connector.network; }
+
+  async signIdentity(params: SignMessageParams & { signerId: string; network: "testnet" }) {
+    const changed = () => !this.active || this.connector.network !== "testnet" || this.state.accountId !== params.signerId;
+    if (changed() || this.state.busy || !this.state.ready || params.network !== "testnet") throw new Error("Wallet account or network changed. Start again.");
+    const revision = this.revision;
+    this.update({ busy: true });
+    try {
+      const { wallet } = await this.connector.getConnectedWallet();
+      const accounts = await wallet.getAccounts({ network: "testnet" });
+      if (changed() || revision !== this.revision || wallet !== this.meteorWallet || !this.meteorIsAvailable() || !accounts.some((account) => account.accountId === params.signerId)) throw new Error("Wallet account or network changed. Start again.");
+      if (typeof wallet.signMessage !== "function") throw new Error("Meteor does not support NEP-413 message signing.");
+      const proof = await wallet.signMessage(params);
+      const currentAccounts = await wallet.getAccounts({ network: "testnet" });
+      if (changed() || revision !== this.revision || wallet !== this.meteorWallet || !this.meteorIsAvailable() || proof?.accountId !== params.signerId || !currentAccounts.some((account) => account.accountId === params.signerId)) throw new Error("Wallet account or network changed. Start again.");
+      return proof;
+    } finally {
+      this.update({ busy: false });
+      if (this.refreshAfterBusy) { this.refreshAfterBusy = false; void this.refresh(); }
+    }
+  }
 
   async signCreation(transaction: CreationTransaction) {
     if (!this.active || this.state.busy || !this.state.ready || this.connector.network !== "testnet" || transaction.network !== "testnet" || this.state.accountId !== transaction.signerId) {

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { buildYawrdCreation, type CreationInput, type CreationPlan } from "../src/create-yawrd";
 import { BuoyMark } from "./components/buoy-mark";
 import { useTestnetWallet } from "./use-testnet-wallet";
+import { ProjectCover, ProjectHeading } from "./components/project-presentation";
 import { CreationPanel } from "./components/creation-panel";
 import { testnetFactorySettings } from "../src/testnet-factory-settings";
 
@@ -263,13 +264,12 @@ export default function OpenYawrdPage() {
           {step < 3 && (
             <aside aria-labelledby="preview-title" className="lg:sticky lg:top-8">
               <div className="overflow-hidden rounded-[24px] border border-[#5b918c]/35 bg-[#162521] shadow-[0_24px_70px_rgba(0,0,0,0.17)]">
-                <div aria-hidden="true" className="preview-art h-20 border-b border-white/[0.08] sm:h-24" />
+                <ProjectCover className="h-20 sm:h-24" />
                 <div className="p-6 sm:p-8">
                   <h2 id="preview-title" className="text-base font-medium text-white">Live preview</h2>
                   {result.preview ? (
                     <div className="mt-5">
-                      <p className="text-[clamp(1.9rem,3vw,3rem)] leading-[1.08] font-medium tracking-[-0.06em] text-[#e7f2ed]">{result.preview.initializer.config.name}</p>
-                      <p className="mt-3 text-sm leading-7 text-[#a8c0b8]">{result.preview.initializer.config.purpose}</p>
+                      <ProjectHeading name={result.preview.initializer.config.name} description={result.preview.initializer.config.purpose} />
                       <div className="my-6 h-px bg-white/[0.1]" />
                       <p className="break-all font-mono text-xs leading-6 text-[#b9d7d0]">{result.preview.daoAccountId}</p>
                       <p className="mt-4 text-sm text-[#c6ded5]">{result.preview.initializer.policy.roles[0].kind.Group.length} Stewards · {result.preview.initializer.policy.default_vote_policy.threshold} approvals needed</p>
