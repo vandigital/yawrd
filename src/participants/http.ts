@@ -99,13 +99,18 @@ export async function authRequest(request: Request, action: string, auth: Persis
 }
 export async function participantRequest(request: Request, id: string, action: string, repo: ParticipantRepository, origin: string | null) {
   try {
-    const read = action === 'state' && request.method === 'GET';
-    fail(read || (request.method === 'POST' && ['apply', 'review'].includes(action)), 'method_not_allowed', 405);
+    const read = ['state', 'agent-association'].includes(action) && request.method === 'GET';
+    fail(read || (request.method === 'POST' && ['apply', 'review', 'agent-association'].includes(action)), 'method_not_allowed', 405);
     sameOrigin(request, origin, !read);
     const hash = sessionHash(cookie(request, SESSION_COOKIE));
-    if (read) return json(await repo.view(id, hash));
+    if (read && action === 'state') return json(await repo.view(id, hash));
     fail(hash, 'sign_in_required', 401);
+    if (read) return json({ association: await repo.agentAssociation(id, hash) });
     const data = await body(request);
+    if (action === 'agent-association') {
+      fields(data, ['agentReference', 'consent', 'consentVersion']);
+      return json({ association: await repo.associateAgent(id, hash, data.agentReference, data.consent, data.consentVersion) });
+    }
     if (action === 'apply') {
       fields(data, ['introduction', 'consent']);
       return json(await repo.apply(id, hash, data.introduction, data.consent));

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Query, Row } from './database.ts';
-import type { Application, ParticipantView, PersistedProject } from './types.ts';
+import type { AgentAssociation, Application, ParticipantView, PersistedProject } from './types.ts';
 
 export class WorkflowError extends Error {
   readonly code: string;
@@ -18,6 +18,39 @@ function application(row: Row): Application {
 export class ParticipantRepository {
   readonly query: Query;
   constructor(query: Query) { this.query = query; }
+
+  async agentAssociation(id: string, sessionHash: string): Promise<AgentAssociation | null> {
+    const [row] = await this.query(`SELECT s.account_id, d.application_id, g.agent_reference, g.consent_version, g.authorized_at
+      FROM yawrd.projects p LEFT JOIN yawrd.sessions s ON ${liveSession}
+      LEFT JOIN yawrd.applications a ON a.network = p.network AND a.project_id = p.id AND a.account_id = s.account_id
+      LEFT JOIN yawrd.review_decisions d ON d.application_id = a.id AND d.decision = 'approved'
+      LEFT JOIN yawrd.agent_associations g ON g.application_id = d.application_id AND g.network = p.network AND g.project_id = p.id
+      WHERE p.network = 'testnet' AND p.id = $1 AND p.published_at IS NOT NULL`, [id, sessionHash]);
+    fail(row, 'not_found', 404);
+    fail(row.account_id, 'sign_in_required', 401);
+    // A creator role alone is insufficient. Check approved membership even for reads.
+    fail(row.application_id, 'approved_participant_required', 403);
+    if (row.agent_reference == null) return null;
+    return { network: 'testnet', projectId: id, applicationId: String(row.application_id), operatorAccountId: String(row.account_id), agentReference: String(row.agent_reference), consentVersion: 'agent-association-v1', authorizedAt: new Date(row.authorized_at as string | Date).toISOString() };
+  }
+
+  async associateAgent(id: string, sessionHash: string, agentReference: unknown, consent: unknown, consentVersion: unknown) {
+    fail(consent === true && consentVersion === 'agent-association-v1', 'association_consent_required');
+    // Opaque human-attested identifier, never fetched or treated as an agent credential.
+    fail(typeof agentReference === 'string' && agentReference.length <= 200 && /^[A-Za-z0-9]/.test(agentReference) && !/[^A-Za-z0-9._:/@-]/.test(agentReference), 'invalid_agent_reference');
+    await this.query(`INSERT INTO yawrd.agent_associations(application_id, network, project_id, agent_reference, consent_version)
+      SELECT a.id, p.network, p.id, $3, 'agent-association-v1'
+      FROM yawrd.projects p JOIN yawrd.sessions s ON ${liveSession}
+      JOIN yawrd.applications a ON a.network = p.network AND a.project_id = p.id AND a.account_id = s.account_id
+      JOIN yawrd.review_decisions d ON d.application_id = a.id AND d.decision = 'approved'
+      WHERE p.network = 'testnet' AND p.id = $1 AND p.published_at IS NOT NULL
+      ON CONFLICT (application_id) DO NOTHING`, [id, sessionHash, agentReference]);
+    // Separate statement sees a concurrent winner after the unique constraint waits.
+    const association = await this.agentAssociation(id, sessionHash);
+    fail(association, 'association_unavailable', 409);
+    fail(association.agentReference === agentReference, 'association_conflict', 409);
+    return association;
+  }
 
   async project(id: string): Promise<PersistedProject | null> {
     if (!/^[a-z0-9][a-z0-9-]{1,62}$/.test(id) || id === 'the-common-table') return null;
