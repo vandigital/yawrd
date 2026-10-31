@@ -121,12 +121,12 @@ async function browserChecks(projectPath, syntheticPath, syntheticToken, marker)
       for (let i = 0; i < 200; i++) {
         const result = await cdp('Runtime.evaluate', { expression: `JSON.stringify({ready:document.readyState,text:document.body?.innerText,overflow:document.documentElement?.scrollWidth>innerWidth,secure:window.isSecureContext})`, returnByValue: true });
         snapshot = JSON.parse(result.result.value);
-        if (snapshot.ready === 'complete' && snapshot.text?.includes(path === '/' ? 'Create your Yawrd' : path.includes('the-common-table') ? 'The Common Table' : path.includes('dev-07b-http') ? 'DEVELOPMENT ONLY' : 'YAW-001')) break;
+        if (snapshot.ready === 'complete' && snapshot.text?.replace(/\s+/g, ' ').includes(path === '/' ? 'The place to build is here.' : path === '/create' ? 'Create your Yawrd' : path.includes('the-common-table') ? 'The Common Table' : path.includes('dev-07b-http') ? 'DEVELOPMENT ONLY' : 'YAW-001')) break;
         await pause(100);
       }
       stage = `browser ${label} ${width}px document readiness`;
       assert.equal(snapshot.ready, 'complete');
-      assert.ok(snapshot.text?.includes(path === '/' ? 'Create your Yawrd' : path.includes('the-common-table') ? 'The Common Table' : path.includes('dev-07b-http') ? 'DEVELOPMENT ONLY' : 'YAW-001'));
+      assert.ok(snapshot.text?.replace(/\s+/g, ' ').includes(path === '/' ? 'The place to build is here.' : path === '/create' ? 'Create your Yawrd' : path.includes('the-common-table') ? 'The Common Table' : path.includes('dev-07b-http') ? 'DEVELOPMENT ONLY' : 'YAW-001'));
       stage = `browser ${label} ${width}px overflow`;
       assert.equal(snapshot.overflow, false);
       stage = `browser ${label} ${width}px secure context`;
@@ -149,7 +149,8 @@ async function browserChecks(projectPath, syntheticPath, syntheticToken, marker)
     await page(projectPath, 1280, 'yaw001-public');
     await page(projectPath, 390, 'yaw001-public');
     await page('/yawrd/the-common-table', 1280, 'fixture');
-    await page('/', 1280, 'creation');
+    await page('/', 1280, 'landing');
+    await page('/create', 1280, 'creation');
     const cookie = await cdp('Network.setCookie', { name: '__Host-yawrd_session', value: syntheticToken, url: origin, path: '/', secure: true, httpOnly: true, sameSite: 'Strict' });
     assert.equal(cookie.success, true);
     await page(syntheticPath, 390, 'synthetic-approved', true);

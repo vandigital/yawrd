@@ -87,6 +87,6 @@ export function IdentityHarness() {
     </section>}
     <p role="status" aria-live="polite">{status}</p>
     {result && result.accountId === wallet.accountId && <p>Verified account: {result.accountId}<br />Finalized Testnet block: {result.blockHeight}<br />Block hash: <span className="break-all">{result.blockHash}</span></p>}
-    <a href="/" className="underline">Return to Open a Yawrd</a>
+    <a href="/create" className="underline">Return to Open a Yawrd</a>
   </main>;
 }
