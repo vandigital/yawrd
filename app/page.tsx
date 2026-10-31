@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Yawrd · The place to build is here",
@@ -95,7 +96,7 @@ export default function LandingPage() {
       </section>
     </main>
     <footer className="landing-footer">
-      <div className="landing-container landing-footer-inner"><Brand /><p>A Keelbase Experience.</p></div>
+      <div className="landing-container landing-footer-inner"><Brand /><p>A Keelbase Experience.</p><Link href="/docs" className="ml-auto inline-flex min-h-6 shrink-0 items-center text-xs text-[#c1d3db] transition-colors hover:text-[#a6f7ec]">Docs</Link></div>
     </footer>
   </div>;
 }
