@@ -39,10 +39,14 @@ passed('legacy wallet returns preserve the full query and do not loop');
 for (const path of ['/', '/?campaign=launch', '/?errorCode=UserRejected', '/create', '/create?transactionHashes=abc']) {
   const response = await http(path);
   const html = await response.text();
-  assert.ok(html.includes(path.startsWith('/create') ? 'Create your Yawrd' : 'The place to build is'));
-  assert.ok(html.includes(path.startsWith('/create') ? '<title>Open a Yawrd · Testnet</title>' : '<title>Yawrd · The place to build is here</title>'));
+  assert.ok(html.includes(path.startsWith('/create') ? 'Create your Yawrd' : 'The place to <span>build</span>'));
+  assert.ok(html.includes(path.startsWith('/create') ? '<title>Open a Yawrd · Testnet</title>' : '<title>Yawrd · The place to build</title>'));
+  assert.equal((html.match(/<link rel="icon" /g) ?? []).length, 1, `${path} has one favicon declaration`);
+  assert.ok(html.includes('<link rel="icon" href="/brand/android-chrome-192x192.png" type="image/png" sizes="192x192"/>'));
 }
+await http('/icon.svg', 404);
 assert.ok((await (await http('/yawrd/the-common-table')).text()).includes('Public preview'));
+assert.ok((await (await http('/docs')).text()).includes('Back to Yawrd'));
 passed('landing, builder, fixture and route-specific metadata render');
 
 function luminance(hex) {
@@ -121,13 +125,39 @@ try {
   }
   for (const width of [1672, 1440, 1280, 1100, 1024, 768, 640, 390, 320]) {
     await navigate('/', width, width < 500 ? 844 : 1000);
-    assert.equal(await evaluate(`document.querySelector('h1').textContent`), 'The place to build is here.');
+    assert.equal(await evaluate(`document.querySelector('.landing-wordmark').textContent`), 'Yawrd.');
+    assert.equal(await evaluate(`document.querySelector('h1').textContent`), 'The place to build');
+    assert.equal(await evaluate(`document.querySelector('.landing-subtitle').textContent`), "Where People & Agents collab on what's next.");
+    assert.equal(await evaluate(`document.querySelector('meta[name="description"]').content`), "Where People & Agents collab on what's next.");
+    assert.equal(await evaluate(`document.querySelector('.landing-wallet-note').textContent`), 'Tag us on Near Social for early access');
+    assert.equal(await evaluate(`document.querySelector('.landing-wallet-note a').textContent`), 'Near Social');
+    assert.equal(await evaluate(`document.querySelector('.landing-wallet-note a').href`), 'https://near.social/yawrd.near');
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.landing-wallet-note a')).textDecorationLine`), 'underline');
+    assert.equal(await evaluate(`document.body.innerText.includes('Opening on Testnet requires wallet approval and setup costs.')`), false);
+    assert.equal(await evaluate(`document.querySelector('.landing-journey-heading .landing-eyebrow').textContent`), 'From Blueprint to Build');
+    assert.equal(await evaluate(`document.querySelector('#journey-title').textContent`), 'Made together.');
+    assert.deepEqual(await evaluate(`[...document.querySelectorAll('.landing-steps li')].map(el => [el.querySelector('.landing-step-number span').textContent, el.querySelector('h3').textContent, el.querySelector('p').textContent])`), [
+      ['01', 'Open', 'Describe the Yawrd, the build, and the rules.'],
+      ['02', 'Recruit', 'Invite people and agents into your Yawrd.'],
+      ['03', 'Build', 'Work together toward a shared goal.'],
+      ['04', 'Reward', 'Fund contributors transparently.'],
+    ]);
+    assert.equal(await evaluate(`document.querySelectorAll('link[rel="icon"]').length`), 1, 'Only one favicon is configured');
+    assert.equal(await evaluate(`document.querySelector('link[rel="icon"]').getAttribute('href')`), '/brand/android-chrome-192x192.png');
+    assert.equal(await evaluate(`document.querySelector('link[rel="icon"]').type`), 'image/png');
+    assert.equal(await evaluate(`document.querySelector('link[rel="icon"]').sizes.value`), '192x192');
+    const icon = await http(await evaluate(`document.querySelector('link[rel="icon"]').getAttribute('href')`));
+    assert.equal(icon.headers.get('content-type'), 'image/png');
+    assert.deepEqual(Buffer.from(await icon.arrayBuffer()), await readFile(new URL('../public/brand/android-chrome-192x192.png', import.meta.url)), 'The supplied favicon is served without alterations');
+    assert.deepEqual(await evaluate(`(async () => { const img = new Image(); img.src = document.querySelector('link[rel="icon"]').href; await img.decode(); return [img.naturalWidth, img.naturalHeight]; })()`), [192, 192]);
     assert.equal(await evaluate(`document.querySelectorAll('.landing-features li').length`), 5);
     assert.equal(await evaluate(`document.querySelector('.landing-planned').textContent`), 'Planned functionality');
     assert.equal(await evaluate(`document.querySelector('.landing-github').href`), 'https://github.com/vandigital/yawrd-build-progress');
-    assert.equal(await evaluate(`document.querySelectorAll('a').length`), 6);
+    assert.equal(await evaluate(`document.querySelectorAll('a').length`), 8);
+    assert.equal(await evaluate(`document.querySelector('.landing-footer a[href="/docs"]').textContent`), 'Docs');
     assert.equal(await evaluate(`[...document.images].every(img => img.complete && img.naturalWidth > 0)`), true);
-    assert.equal(await evaluate(`[...document.querySelectorAll('a')].every(el => {const r = el.getBoundingClientRect(); return r.width >= 24 && r.height >= 24})`), true);
+    // Inline prose links are exempt from the 24px target size; retain the check for every existing navigation link.
+    assert.equal(await evaluate(`[...document.querySelectorAll('a')].filter(el => !el.closest('.landing-wallet-note')).every(el => {const r = el.getBoundingClientRect(); return r.width >= 24 && r.height >= 24})`), true);
     assert.equal(await evaluate(`document.querySelector('.landing-primary').getAttribute('href')`), '/create');
     assert.equal(await evaluate(`document.querySelector('.landing-secondary').getAttribute('href')`), '/#discover');
     if ([1672, 1440, 1024, 768, 640, 390, 320].includes(width)) await screenshot(`landing-${width}`);
@@ -140,6 +170,12 @@ try {
   await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
   await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
   await until(`document.activeElement.id === 'main-content'`);
+  await evaluate(`document.querySelector('.landing-secondary').focus()`);
+  await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+  await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+  assert.equal(await evaluate(`document.activeElement.href`), 'https://near.social/yawrd.near');
+  assert.equal(await evaluate(`getComputedStyle(document.activeElement).outlineStyle`), 'solid');
+  assert.equal(await evaluate(`getComputedStyle(document.activeElement).outlineWidth`), '2px');
   await evaluate(`document.querySelector('.landing-primary').focus()`);
   assert.equal(await evaluate(`getComputedStyle(document.activeElement).outlineStyle`), 'solid');
   assert.equal(await evaluate(`getComputedStyle(document.activeElement).outlineWidth`), '2px');
@@ -157,6 +193,11 @@ try {
   await screenshot('landing-mobile-reduced-motion');
   await navigate('/', 1440, 1000, true);
   passed('reduced motion disables transitions and smooth anchor scrolling');
+
+  await evaluate(`document.querySelector('.landing-footer a[href="/docs"]').click()`);
+  await until(`location.pathname === '/docs' && document.body.innerText.includes('Back to Yawrd')`);
+  assert.equal(await evaluate('document.documentElement.scrollWidth > innerWidth'), false, 'Docs navigation preserves the layout');
+  passed('preserved footer Docs link navigates to documentation');
 
   for (const width of [1440, 390, 320]) {
     await navigate('/create', width, width < 500 ? 844 : 1000);

@@ -42,6 +42,7 @@ button { cursor: pointer; }
 .landing-secondary { color: #f2f7f5; border-color: #51afa7; background: #001819d9; }
 .landing-secondary:hover { background: #0b3838; border-color: #a9f1e9; }
 .landing-wallet-note { margin-top: 10px; color: #b4cccb; font-size: 11px; line-height: 1.6; }
+.landing-wallet-note a { text-decoration: underline; text-underline-offset: 3px; }
 .landing-eyebrow { font-size: 10px; font-weight: 650; letter-spacing: .22em; text-transform: uppercase; color: #7df3e5; }
 .landing-discover { position: relative; display: grid; grid-template-columns: 1fr 1.25fr 1.9fr; align-items: center; gap: 26px; padding: 14px; border: 1px solid #359a93; border-radius: 18px; background: linear-gradient(120deg, #002021eb, #001718f5); box-shadow: 0 14px 40px #0002; scroll-margin-top: 20px; }
 .landing-feature-art { align-self: stretch; overflow: hidden; border: 1px solid #17635e; border-radius: 15px; min-height: 164px; background: #07504b; }

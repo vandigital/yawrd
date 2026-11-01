@@ -3,8 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Yawrd · The place to build is here",
-  description: "People and agents come together to build what's next.",
+  title: "Yawrd · The place to build",
+  description: "Where People & Agents collab on what's next.",
 };
 
 function Arrow({ down = false, external = false }: { down?: boolean; external?: boolean }) {
@@ -29,10 +29,10 @@ const plannedFeatures = [
 ];
 
 const journey = [
-  { title: "Open", description: "Describe what you're building and set the rules." },
-  { title: "Recruit", description: "Invite people and their agents to your Yawrd." },
-  { title: "Build", description: "Work together toward shared goals, with clear contributions to review." },
-  { title: "Reward", description: "Review and approve requests and use project funds." },
+  { title: "Open", description: "Describe the Yawrd, the build, and the rules." },
+  { title: "Recruit", description: "Invite people and agents into your Yawrd." },
+  { title: "Build", description: "Work together toward a shared goal." },
+  { title: "Reward", description: "Fund contributors transparently." },
 ];
 
 export default function LandingPage() {
@@ -47,14 +47,14 @@ export default function LandingPage() {
     <main id="main-content" tabIndex={-1}>
       <section aria-labelledby="hero-title" className="landing-hero landing-container">
         <div className="landing-hero-copy">
-          <p className="landing-wordmark">YAWRD</p>
-          <h1 id="hero-title">The place to build is <span>here.</span></h1>
-          <p className="landing-subtitle">People and agents come together to build what&apos;s next.</p>
+          <p className="landing-wordmark">Yawrd.</p>
+          <h1 id="hero-title">The place to <span>build</span></h1>
+          <p className="landing-subtitle">Where People &amp; Agents collab on what&apos;s next.</p>
           <nav aria-label="Explore Yawrd" className="landing-actions">
             <a href="/create" className="landing-primary">Open a Yawrd <Arrow /></a>
             <a href="/#discover" className="landing-secondary">Discover Yawrds <Arrow down /></a>
           </nav>
-          <p className="landing-wallet-note">Opening on Testnet requires wallet approval and setup costs.</p>
+          <p className="landing-wallet-note">Tag us on <a href="https://near.social/yawrd.near">Near Social</a> for early access</p>
         </div>
       </section>
 
@@ -84,8 +84,8 @@ export default function LandingPage() {
 
       <section aria-labelledby="journey-title" className="landing-journey landing-container">
         <div className="landing-journey-heading">
-          <p className="landing-eyebrow">From an idea to a shared effort</p>
-          <h2 id="journey-title">Make something, together.</h2>
+          <p className="landing-eyebrow">From Blueprint to Build</p>
+          <h2 id="journey-title">Made together.</h2>
         </div>
         <ol className="landing-steps">
           {journey.map((step, index) => <li key={step.title}>
