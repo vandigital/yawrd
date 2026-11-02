@@ -37,7 +37,7 @@ export default async function PublicYawrdPage({ params }: Props) {
   return <main className="min-h-screen bg-[#0d1716] px-5 pb-16 text-[#e9f1ee] sm:px-8">
     <div className="mx-auto max-w-[1000px]">
       <header className="mb-8 flex min-h-20 flex-wrap items-center justify-between gap-3 border-b border-white/[0.09] py-4 sm:mb-12 sm:min-h-24">
-        <a href="/" aria-label="Yawrd Creation Builder" className="flex items-center gap-3 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c2dedd]">
+        <a href="/" aria-label="Yawrd home" className="flex items-center gap-3 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c2dedd]">
           <BuoyMark className="size-9" />
           <span className="text-[22px] font-semibold tracking-[-0.06em]">yawrd<span className="text-[#73aaa5]">.</span></span>
         </a>
