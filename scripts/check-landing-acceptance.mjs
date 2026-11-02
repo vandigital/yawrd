@@ -39,7 +39,7 @@ passed('legacy wallet returns preserve the full query and do not loop');
 for (const path of ['/', '/?campaign=launch', '/?errorCode=UserRejected', '/create', '/create?transactionHashes=abc']) {
   const response = await http(path);
   const html = await response.text();
-  assert.ok(html.includes(path.startsWith('/create') ? 'Create your Yawrd' : 'The place to <span>build</span>'));
+  assert.ok((path.startsWith('/create') ? html.replace(/<[^>]*>/g, '').includes('Create your Yawrd') : html.includes('The place to <span>build</span>')));
   assert.ok(html.includes(path.startsWith('/create') ? '<title>Open a Yawrd · Testnet</title>' : '<title>Yawrd · The place to build</title>'));
   assert.equal((html.match(/<link rel="icon" /g) ?? []).length, 1, `${path} has one favicon declaration`);
   assert.ok(html.includes('<link rel="icon" href="/brand/android-chrome-192x192.png" type="image/png" sizes="192x192"/>'));
@@ -202,7 +202,43 @@ try {
   for (const width of [1440, 390, 320]) {
     await navigate('/create', width, width < 500 ? 844 : 1000);
     await until(`document.querySelector('button')?.textContent !== undefined && document.querySelector('#project-name')`);
+    await until(`[...document.images].every(img => img.complete && img.naturalWidth > 0)`);
+    assert.equal(await evaluate(`document.body.innerText.includes('Preview only · Testnet opening is currently unavailable.')`), true);
+    assert.equal(await evaluate(`document.querySelector('nav[aria-label="Creation steps"] [aria-current="step"]').textContent.includes('Yawrd Details')`), true);
+    assert.equal(await evaluate(`document.querySelector('aside').innerText.includes('2 Stewards · 2 approvals needed')`), true);
+    assert.equal(await evaluate(`document.querySelector('aside').innerText.includes('the-common-table.[Testnet factory]')`), true);
+    assert.equal(await evaluate(`document.body.innerText.includes('sputnik-dao.near')`), false);
+    if (width === 1440) {
+      await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+      await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+      assert.equal(await evaluate(`document.activeElement.getAttribute('href')`), '#create-content');
+      await cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+      await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+      await until(`document.activeElement.id === 'create-content'`);
+      await evaluate(`document.activeElement.blur(); window.scrollTo({ top: 0, behavior: 'instant' })`);
+    }
     await screenshot(`create-${width}`);
+    await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent === 'Next').click()`);
+    await until(`document.querySelector('#step-title').textContent.includes('Yawrd Stewards')`);
+    assert.equal(await evaluate('document.documentElement.scrollWidth > innerWidth'), false, `Stewards at ${width}px must not overflow`);
+    assert.equal(await evaluate(`document.querySelectorAll('input[aria-label^="Additional Steward"]').length`), 1);
+    assert.equal(await evaluate(`document.querySelector('#approval-threshold').value`), '2');
+    await screenshot(`create-stewards-${width}`);
+    if (width === 1440) {
+      await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Add a Steward')).click()`);
+      await until(`document.querySelectorAll('input[aria-label^="Additional Steward"]').length === 2`);
+      await evaluate(`(() => {
+        const input = document.querySelector('input[aria-label="Additional Steward 2 account ID"]');
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'second-example.testnet');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      })()`);
+      await until(`document.querySelector('aside').innerText.includes('3 Stewards · 2 approvals needed')`);
+      await evaluate(`document.querySelector('button[aria-label="Remove additional Steward 2"]').click()`);
+      await until(`document.querySelector('aside').innerText.includes('2 Stewards · 2 approvals needed')`);
+      assert.equal(await evaluate(`document.querySelector('input[aria-label="Additional Steward 1 account ID"]').value`), 'maya.example.testnet');
+    }
+    await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent === 'Back').click()`);
+    await until(`document.querySelector('#project-name')`);
   }
   await evaluate(`(() => {
     const input = document.querySelector('#project-name');
@@ -218,6 +254,7 @@ try {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   })()`);
   await until(`document.querySelector('#project-label').value === 'acceptance-idea'`);
+  await until(`document.querySelector('aside').innerText.includes('acceptance-idea.[Testnet factory]')`);
   await evaluate(`Array.from(document.querySelectorAll('button')).find(el => el.textContent === 'Next').click()`);
   await until(`document.querySelector('#step-title').textContent.includes('Yawrd Stewards')`);
   assert.equal(await evaluate(`document.body.innerText.includes('No account connected')`), true);
