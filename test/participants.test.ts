@@ -1,3 +1,6 @@
+import { ProjectWalletControls } from '../app/components/project-wallet-controls.tsx';
+import { initialWalletState } from '../app/wallet-session.ts';
+import { GENESIS_YAW_001 } from '../src/genesis/yaw-001.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
@@ -287,4 +290,89 @@ test('opaque token validation rejects empty, malformed and caller-selected ident
   for (const value of [null, '', 'alice.testnet', 'a'.repeat(42), 'a'.repeat(44), '$'.repeat(43)]) assert.equal(sessionHash(value), null);
   assert.equal(sessionHash(token), hashToken(token));
   assert.equal(BROWSER_COOKIE.startsWith('__Host-'), true);
+});
+
+test('Genesis creator has a header identity and review workspace, without applicant controls', () => {
+  const view: ParticipantView = { ...publicView, accountId: 'yawrd1.testnet', role: 'creator', applications: [{ id: appRow.id, accountId: 'alice.testnet', introduction: 'Saved introduction', status: 'pending', reviewerAccountId: null }] };
+  const html = renderToStaticMarkup(createElement(PersistedYawrdPresentation, { project, view }));
+  assert.match(html, /Creator workspace/);
+  assert.match(html, /NEP-413 verified · yawrd1.testnet · Creator/);
+  assert.match(html, /Review applications/);
+  assert.match(html, />Approve<\/button>/);
+  assert.match(html, />Reject<\/button>/);
+  assert.doesNotMatch(html, /<form|Apply to Join|A short introduction|Take part in this Yawrd|Application pending/);
+  assert.ok(html.indexOf('NEP-413 verified') < html.indexOf('</header>'));
+  assert.ok(html.indexOf('</header>') < html.indexOf('<h1'));
+});
+
+test('verified applicant sees the recorded decision and reviewer without a second application', () => {
+  for (const status of ['pending', 'approved', 'rejected'] as const) {
+    const view: ParticipantView = { ...publicView, accountId: 'alice.testnet', role: status === 'approved' ? 'participant' : 'public', application: { id: appRow.id, accountId: 'alice.testnet', introduction: 'Saved', status, reviewerAccountId: status === 'pending' ? null : 'creator.testnet' } };
+    const html = renderToStaticMarkup(createElement(PersistedYawrdPresentation, { project, view }));
+    assert.match(html, new RegExp(`Application ${status}`));
+    assert.doesNotMatch(html, /<form|<textarea|Review applications/);
+    assert.equal(html.includes('Reviewed by creator.testnet'), status !== 'pending');
+    assert.equal(html.includes('Crew Member workspace'), status === 'approved');
+  }
+});
+
+test('empty authorized participant information stays quiet, while populated text remains restricted', () => {
+  for (const role of ['creator', 'participant', 'public'] as const) {
+    for (const restrictedContent of [null, '', '   ', 'PRIVATE_UI_SENTINEL']) {
+      const view: ParticipantView = { ...publicView, accountId: 'alice.testnet', role, restrictedContent };
+      const html = renderToStaticMarkup(createElement(PersistedYawrdPresentation, { project, view }));
+      const populated = role !== 'public' && restrictedContent === 'PRIVATE_UI_SENTINEL';
+      assert.equal(html.includes('id="participant-info-title"'), populated);
+      assert.equal(html.includes('PRIVATE_UI_SENTINEL'), populated);
+      assert.equal(html.includes('The creator has not added participant information yet.'), role !== 'public' && !populated);
+    }
+  }
+});
+
+const walletUi = { ...initialWalletState, ready: true, available: true, connect() {}, disconnect() {} };
+function walletMarkup(wallet = walletUi, view = publicView) {
+  return renderToStaticMarkup(createElement(ProjectWalletControls, { wallet, view, busy: false, onPrepare() {}, onSignOut() {}, onSelect() {} }));
+}
+
+test('wallet controls follow actual connection, not the verified session or creator account name', () => {
+  const disconnected = walletMarkup();
+  assert.match(disconnected, />Connect Meteor<\/button>/);
+  assert.match(disconnected, /Wallet disconnected/);
+  assert.doesNotMatch(disconnected, /Meteor connected|Disconnect Meteor/);
+  const connected = walletMarkup({ ...walletUi, accountId: 'yawrd1.testnet', accountIds: ['yawrd1.testnet'] });
+  assert.match(connected, /Meteor connected/);
+  assert.match(connected, /Not signed in/);
+  assert.doesNotMatch(connected, />Connect Meteor<\/button>|NEP-413 verified|· Creator/);
+  assert.match(connected, />Disconnect Meteor<\/button>/);
+  const sessionOnly = walletMarkup(walletUi, { ...publicView, accountId: 'yawrd1.testnet', role: 'creator' });
+  assert.match(sessionOnly, /Wallet disconnected/);
+  assert.match(sessionOnly, /NEP-413 verified · yawrd1.testnet · Creator/);
+  assert.match(sessionOnly, />Sign out<\/button>/);
+  assert.doesNotMatch(sessionOnly, /Meteor connected|Prepare sign-in message/);
+});
+
+test('wallet errors, unavailable state, multiple accounts and mismatched identities are visible', () => {
+  const unavailable = walletMarkup({ ...walletUi, available: false, error: 'Connection was declined' });
+  assert.match(unavailable, /Meteor is unavailable/);
+  assert.match(unavailable, /role="alert"[^>]*>Connection was declined/);
+  assert.match(unavailable, /disabled=""[^>]*>Connect Meteor/);
+  const loading = walletMarkup({ ...walletUi, ready: false });
+  assert.match(loading, /disabled=""[^>]*>Preparing wallet…/);
+  assert.doesNotMatch(loading, /Meteor connected/);
+  const switched = walletMarkup({ ...walletUi, accountId: 'bob.testnet', accountIds: ['alice.testnet', 'bob.testnet'] }, { ...publicView, accountId: 'alice.testnet' });
+  assert.match(switched, /<select/);
+  assert.match(switched, /selected=""[^>]*>bob.testnet/);
+  assert.match(switched, /connected wallet differs from your verified account/);
+  assert.match(switched, /NEP-413 verified · alice.testnet/);
+});
+
+test('Genesis presentation retains persisted project copy and accepted evidence links', () => {
+  const g = GENESIS_YAW_001;
+  const persisted = { ...project, id: g.id, creatorAccountId: g.creatorAccountId, name: 'Persisted project title', description: 'First saved paragraph.\n\nSecond saved paragraph.', objectives: ['Saved objective'], participation: 'Saved participation terms', rewards: 'Saved reward terms' };
+  const html = renderToStaticMarkup(createElement(PersistedYawrdPresentation, { project: persisted, view: publicView }));
+  for (const text of [persisted.name, 'First saved paragraph.', 'Second saved paragraph.', persisted.objectives[0], persisted.participation, persisted.rewards]) assert.ok(html.includes(text), text);
+  for (const path of [`address/${g.creatorAccountId}`, `address/${g.daoAccountId}`, `address/${g.factoryAccountId}`, `txns/${g.creationTransaction}`, `txns/${g.hardeningTransaction}`]) assert.ok(html.includes(`href="https://testnet.nearblocks.io/${path}"`), path);
+  assert.ok(html.includes(`href="https://github.com/${g.publicRepository}"`));
+  assert.match(html, /Approval here grants no external access or role in Project Rules/);
+  assert.doesNotMatch(html, /Published project space|<textarea|<form/);
 });

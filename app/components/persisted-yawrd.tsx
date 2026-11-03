@@ -8,7 +8,12 @@ const publicLinkClass = 'rounded-sm text-[#c2dedd] underline decoration-[#5b918c
 
 export function PersistedYawrdPresentation({ project, view }: { project: PersistedProject; view: ParticipantView }) {
   const genesis = project.id === GENESIS_YAW_001.id && project.network === GENESIS_YAW_001.network && project.creatorAccountId === GENESIS_YAW_001.creatorAccountId ? GENESIS_YAW_001 : null;
-  return <article className="overflow-hidden rounded-[24px] border border-[#5b918c]/35 bg-[#162521] shadow-[0_24px_70px_rgba(0,0,0,0.17)]">
+  return <ParticipantPanel projectId={project.id} initial={view}>
+    {genesis && <nav aria-label="Project navigation" className="mb-6 flex flex-wrap gap-6 text-xs text-[#c2dedd]">
+      <a href="/#discover" className={publicLinkClass}>← Discover Yawrds</a>
+      <a href="/docs" className={publicLinkClass}>Yawrd docs</a>
+    </nav>}
+    <article className="overflow-hidden rounded-[20px] border border-[#377b78] bg-[linear-gradient(130deg,#002b2b,#001e20)] shadow-[0_24px_70px_rgba(0,0,0,0.17)]">
     {genesis ? <div className="relative isolate overflow-hidden">
       <ProjectCover className="h-44 sm:h-52" />
       <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,#0a454550,#002c35b3)]" />
@@ -21,14 +26,13 @@ export function PersistedYawrdPresentation({ project, view }: { project: Persist
       </div>
       <p className="absolute bottom-5 left-6 text-[10px] font-semibold tracking-[0.12em] text-white sm:left-10 sm:text-xs">{genesis.reference} · GENESIS PROJECT</p>
     </div> : <ProjectCover className="h-32 sm:h-52" />}
-    <div className="p-6 sm:p-10">
+    <div className="p-5 sm:p-10 [&_h1]:font-serif [&_h1]:text-[clamp(2.5rem,4.8vw,4.25rem)] [&_h1]:font-medium [&_h1]:tracking-[-0.05em]">
       {genesis ? <div className="mb-5 flex flex-wrap gap-2 text-xs font-medium text-[#c2dedd]">
         <span className="rounded-full border border-[#5b918c]/50 bg-[#3d8c8a]/10 px-3 py-2">Deployed on Testnet</span>
-        <span className="rounded-full border border-white/10 px-3 py-2">Published project space</span>
       </div> : <p className="mb-5 text-xs font-semibold tracking-wide text-[#c2dedd]">Project space · Testnet</p>}
       <ProjectHeading name={project.name} description={genesis ? genesis.tagline : project.description} variant="public" />
       {genesis ? <div className="mt-6 max-w-2xl space-y-3 text-sm leading-7 text-[#bed1c9] sm:text-base">{project.description.split(/\n\s*\n/).map((paragraph, i) => <p key={i}>{paragraph}</p>)}</div> : <p className="mt-6 rounded-xl border border-[#5b918c]/40 bg-[#3d8c8a]/10 p-4 text-sm leading-6 text-[#bed1c9]">This project space stores applications and creator decisions. It does not confirm that Project Rules have been deployed or that Project Funds exist. Approval here grants no external access.</p>}
-      <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.65fr)] lg:gap-12">
+      <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.55fr)] lg:gap-12">
         <div className="min-w-0 space-y-8">
           {genesis && <section aria-labelledby="genesis-status-title" className="rounded-2xl border border-[#5b918c]/40 bg-[#3d8c8a]/10 p-5">
             <h2 id="genesis-status-title" className="text-lg font-medium tracking-tight text-white">Genesis deployment status</h2>
@@ -40,7 +44,7 @@ export function PersistedYawrdPresentation({ project, view }: { project: Persist
           <section><h2 className="text-xl font-medium tracking-tight text-white">Contributions &amp; rewards</h2><p className="mt-3 text-sm leading-7 text-[#bed1c9]">{project.rewards}</p></section>
         </div>
         {genesis ? <aside aria-label="Project identity and public evidence" className="min-w-0 space-y-5">
-          <section aria-labelledby="genesis-identity-title" className="rounded-2xl border border-white/10 bg-[#12201d] p-5">
+          <section aria-labelledby="genesis-identity-title" className="rounded-2xl border border-white/10 bg-[#001b1d] p-5">
             <h2 id="genesis-identity-title" className="mb-5 text-base font-medium text-[#e7f2ed]">Project identity</h2>
             <dl className="space-y-5 text-xs leading-6">
               <div><dt className="text-[#91b5aa]">Yawrder · Creator wallet</dt><dd className="mt-2 flex items-center gap-3">
@@ -65,13 +69,13 @@ export function PersistedYawrdPresentation({ project, view }: { project: Persist
               <a className={`block text-sm ${publicLinkClass}`} href={`https://testnet.nearblocks.io/txns/${item.hash}`}>{item.label} <span aria-hidden="true">↗</span><span className="mt-2 block break-all font-mono text-[11px] leading-6">{item.hash}</span></a>
             </li>)}</ul>
           </section>
-        </aside> : <aside aria-label="Creator profile" className="rounded-2xl border border-white/10 bg-[#12201d] p-5">
+        </aside> : <aside aria-label="Creator profile" className="rounded-2xl border border-white/10 bg-[#001b1d] p-5">
           <div className="flex items-center gap-3"><YawrdAvatar variant="sea" label="Creator avatar preset" size={44} /><p className="text-xs text-[#91b5aa]">Created by</p></div>
           <p className="mt-3 break-all font-mono text-xs leading-6 text-[#c2dedd]">{project.creatorAccountId}</p>
           <p className="mt-3 text-xs leading-6 text-[#91b5aa]">Testnet · Reviews require verification of this wallet.</p>
         </aside>}
       </div>
-      <ParticipantPanel projectId={project.id} initial={view} />
     </div>
-  </article>;
+  </article>
+  </ParticipantPanel>;
 }
