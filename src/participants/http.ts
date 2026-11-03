@@ -1,6 +1,7 @@
 import { IdentityError } from '../identity/nep413.ts';
 import { BROWSER_COOKIE, opaqueToken, PersistentAuth, SESSION_COOKIE, SESSION_SECONDS, sessionHash } from './auth.ts';
 import { fail, ParticipantRepository, WorkflowError } from './repository.ts';
+import { GENESIS_YAW_001 } from '../genesis/yaw-001.ts';
 
 export function configuredOrigin(): string | null {
   const value = process.env.YAWRD_APP_ORIGIN;
@@ -99,12 +100,23 @@ export async function authRequest(request: Request, action: string, auth: Persis
 }
 export async function participantRequest(request: Request, id: string, action: string, repo: ParticipantRepository, origin: string | null) {
   try {
-    const read = ['state', 'agent-association'].includes(action) && request.method === 'GET';
-    fail(read || (request.method === 'POST' && ['apply', 'review', 'agent-association'].includes(action)), 'method_not_allowed', 405);
+    const read = ['state', 'agent-association', 'genesis-draft'].includes(action) && request.method === 'GET';
+    fail(read || (request.method === 'POST' && ['apply', 'review', 'agent-association', 'genesis-draft', 'genesis-publish'].includes(action)), 'method_not_allowed', 405);
     sameOrigin(request, origin, !read);
     const hash = sessionHash(cookie(request, SESSION_COOKIE));
     if (read && action === 'state') return json(await repo.view(id, hash));
     fail(hash, 'sign_in_required', 401);
+    if (action === 'genesis-draft' || action === 'genesis-publish') {
+      fail(id === GENESIS_YAW_001.id, 'not_found', 404);
+      fail(!new URL(request.url).search, 'invalid_request');
+      if (action === 'genesis-publish') {
+        const data = await body(request);
+        fields(data, ['consent', 'consentVersion']);
+        return json(await repo.publishGenesis(hash, data.consent, data.consentVersion));
+      }
+      if (!read) fields(await body(request), []);
+      return json(read ? await repo.genesisStatus(hash) : await repo.linkGenesis(hash));
+    }
     if (read) return json({ association: await repo.agentAssociation(id, hash) });
     const data = await body(request);
     if (action === 'agent-association') {

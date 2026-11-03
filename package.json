@@ -2,7 +2,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --import ./test/register-tsx.mjs --test --test-isolation=none test/create-yawrd.test.ts test/blueprint-public-details.test.ts test/wallet-session.test.ts test/creation-integration.test.ts test/public-yawrd.test.ts test/identity.test.ts test/participants.test.ts test/agent-association.test.ts test/build-progress-contract.test.ts",
+    "test": "node --import ./test/register-tsx.mjs --test --test-isolation=none test/create-yawrd.test.ts test/blueprint-public-details.test.ts test/wallet-session.test.ts test/creation-integration.test.ts test/public-yawrd.test.ts test/identity.test.ts test/participants.test.ts test/agent-association.test.ts test/build-progress-contract.test.ts test/genesis-draft.test.ts test/genesis-publication.test.ts test/genesis-publication-preflight.test.mjs",
     "dev": "next dev --webpack",
     "dev:identity": "YAWRD_ENABLE_DEV_IDENTITY=1 next dev --webpack --hostname 127.0.0.1",
     "build": "next build --webpack",

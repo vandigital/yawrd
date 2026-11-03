@@ -50,6 +50,19 @@ try {
     sql.query(`GRANT UPDATE (revoked_at) ON yawrd.sessions TO ${role}`),
     sql.query(`GRANT UPDATE (attempts, resets_at) ON yawrd.auth_rate_limits TO ${role}`),
   );
+  // Table REVOKE alone does not clear column grants from a prior opt-in.
+  // Default remains SELECT-only; enabling this requires the separately applied
+  // Genesis draft migration. A missing DAO column makes the grant fail closed.
+  statements.push(sql.query(`DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='yawrd' AND table_name='projects' AND column_name='dao_account_id') THEN
+      REVOKE INSERT (network, id, creator_account_id, dao_account_id, name, description, objectives, participation, rewards)
+        ON yawrd.projects FROM yawrd_07b_runtime;
+    END IF;
+  END $$`));
+  if (process.env.YAWRD_ENABLE_GENESIS_DRAFT_LINKING === '1') {
+    statements.push(sql.query(`GRANT INSERT (network, id, creator_account_id, dao_account_id, name, description, objectives, participation, rewards)
+      ON yawrd.projects TO yawrd_07b_runtime`));
+  }
   await sql.transaction(statements);
   const runtimeSql = neon(runtime.toString());
   const [attributes] = await runtimeSql.query(`SELECT current_user=$1 AS expected, NOT (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls OR rolinherit) AS restricted FROM pg_roles WHERE rolname=current_user`, [role]);

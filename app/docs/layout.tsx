@@ -25,7 +25,9 @@ export default function DocsLayout({ children }: Readonly<{ children: React.Reac
               <ul>{group.pages.map(label => <li key={label}>
                 {label === "Introduction"
                   ? <a href="/docs" aria-current="page">{label}</a>
-                  : <span className={styles.upcoming}>{label}<small>Upcoming</small></span>}
+                  : label === "Genesis: YAW-001"
+                    ? <a href="/docs#genesis-yaw-001">{label}</a>
+                    : <span className={styles.upcoming}>{label}<small>Upcoming</small></span>}
               </li>)}</ul>
             </section>)}
           </nav>

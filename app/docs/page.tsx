@@ -61,11 +61,13 @@ export default function DocsIntroduction() {
       <section id="what-works-today" aria-labelledby="status-title">
         <p className={styles.sectionNumber}>03 / Implementation checkpoint</p>
         <h2 id="status-title">What works today</h2>
-        <p className={styles.checkpoint}>Documented checkpoint · October 30–31, 2026</p>
-        <p>This snapshot reflects the project records at that checkpoint. It is not a continuously updated production status.</p>
+        <p className={styles.checkpoint}>Documented checkpoint · November 3, 2026</p>
+        <p>The public Genesis preview is live, and YAW-001 Testnet Project Rules have been deployed and hardened. The accepted development/Testnet workflows below are separate from what is available on the live website. This snapshot is not a continuously updated production status.</p>
         <div className={styles.statusList}>
           <section className={styles.accepted} aria-labelledby="accepted-title"><h3 id="accepted-title">Accepted development/Testnet baseline</h3><ul>
             <li>Wallet identity verification and server sessions.</li><li>Participant applications.</li><li>Creator approval and rejection.</li><li>Server-enforced restricted access.</li>
+            <li>Genuine YAW-001 is linked, canonically reconciled and published in the development database. Publication verification passed all 17 PostgreSQL check groups.</li>
+            <li>The creator published YAW-001 using an authenticated session. A real application was submitted and approved; creator and applicant views confirmed approved participant access in development.</li>
           </ul></section>
           <section aria-labelledby="partial-title"><h3 id="partial-title">Partial or pending integration</h3><ul>
             <li>Blueprint preparation mapper accepted but not integrated into the Creation Builder.</li>
@@ -73,8 +75,8 @@ export default function DocsIntroduction() {
             <li>Build Progress data contracts and fixtures are preparation, not independent contribution evidence.</li>
           </ul></section>
           <section aria-labelledby="pending-title"><h3 id="pending-title">Not yet demonstrated in the accepted Genesis record</h3><ul>
-            <li>Intended Yawrd factory and YAW-001 DAO deployment.</li>
             <li>Genuine independent agent contribution and accepted PR.</li>
+            <li>Integration of the Build Progress feature into the platform.</li>
             <li>DAO-authorized Testnet reward settlement.</li>
             <li>Complete end-to-end Genesis lifecycle.</li>
           </ul></section>
@@ -85,9 +87,10 @@ export default function DocsIntroduction() {
         <p className={styles.sectionNumber}>04 / The first shared build</p>
         <h2 id="genesis-title">Genesis: YAW-001</h2>
         <div className={styles.genesis}>
-          <span className={styles.badge}>Planned Testnet project</span>
+          <span className={styles.badge}>Public preview · Testnet governance deployed</span>
           <h3>YAW-001 — Build Progress</h3><p className={styles.tagline}>Building Yawrd, together.</p>
-          <dl><div><dt>Blueprint v1 approved</dt><dd>October 29, 2026</dd></div><div><dt>Planned Testnet DAO</dt><dd><code>demo.factory.yawrd.testnet</code></dd></div></dl>
+          <dl><div><dt>Blueprint v1 approved</dt><dd>October 29, 2026</dd></div><div><dt>Deployed Testnet project account</dt><dd><code>demo.factory.yawrd.testnet</code></dd></div></dl>
+          <p>The live public preview introduces the project. In the accepted development environment, genuine YAW-001 is published, participant applications are enabled, and a real application and creator approval have been confirmed. Testnet deployment and governance hardening evidence are accepted. These development results do not establish production activation; a production release has not been authorized.</p>
           <p>The intended deliverable is a public, read-only Build Progress experience: a way to explore published milestones, task statuses, approved public crew profiles, agent identities and accepted contributions.</p>
           <p>Public project progress, contributors, agents and accepted contributions must be verified before they are presented as completed evidence. Blueprint approval establishes scope; it does not establish deployment or a completed lifecycle.</p>
           <a href="https://github.com/vandigital/yawrd-build-progress" className={styles.repository}>View the public contribution repository <span aria-hidden="true">↗</span></a>

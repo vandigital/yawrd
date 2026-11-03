@@ -1,9 +1,8 @@
-import './load-environment.mjs';
+// Offline imports must not load credentials or create a database client.
 import assert from 'node:assert/strict';
-import { neon } from '@neondatabase/serverless';
 import { developmentDatabaseUrl } from '../src/participants/database-config.ts';
 
-export async function verifyRuntime(sql) {
+export async function verifyRuntime(sql, { genesisDraftLinking = false, genesisPublication = false } = {}) {
   const [role] = await sql.query(`SELECT current_user='yawrd_07b_runtime' AS expected,
     NOT (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls OR rolinherit) AS restricted,
     NOT EXISTS (SELECT 1 FROM pg_auth_members WHERE member=r.oid) AS no_memberships
@@ -29,12 +28,23 @@ export async function verifyRuntime(sql) {
       assert.equal(row.allowed, expected.includes(permission), `${table} ${permission}`);
     }
   }
-  const columns = { auth_challenges: ['consumed_at'], sessions: ['revoked_at'], auth_rate_limits: ['attempts', 'resets_at'] };
+  const columns = { projects: [], auth_challenges: ['consumed_at'], sessions: ['revoked_at'], auth_rate_limits: ['attempts', 'resets_at'] };
+  if (genesisPublication) columns.projects = ['published_at'];
   for (const [table, expected] of Object.entries(columns)) {
     const rows = await sql.query("SELECT column_name, has_column_privilege(current_user,table_schema||'.'||table_name,column_name,'UPDATE') AS allowed FROM information_schema.columns WHERE table_schema='yawrd' AND table_name=$1", [table]);
     assert.ok(rows.length);
+    if (genesisPublication && table === 'projects') assert.ok(rows.some(row => row.column_name === 'published_at'), 'projects.published_at required');
     for (const row of rows) assert.equal(row.allowed, expected.includes(row.column_name), `${table}.${row.column_name} UPDATE`);
   }
+  // Column INSERT does not imply table-level INSERT. Verify the exact allowlist.
+  // Publication mode expects the existing draft-linking INSERT allowlist too;
+  // neither mode permits INSERT of published_at or created_at.
+  const projectInsertColumns = genesisDraftLinking || genesisPublication
+    ? ['network', 'id', 'creator_account_id', 'dao_account_id', 'name', 'description', 'objectives', 'participation', 'rewards'] : [];
+  const projectColumns = await sql.query("SELECT column_name, has_column_privilege(current_user,table_schema||'.'||table_name,column_name,'INSERT') AS allowed FROM information_schema.columns WHERE table_schema='yawrd' AND table_name='projects'");
+  assert.ok(projectColumns.length);
+  for (const column of projectInsertColumns) assert.ok(projectColumns.some(row => row.column_name === column), `projects.${column} required`);
+  for (const row of projectColumns) assert.equal(row.allowed, projectInsertColumns.includes(row.column_name), `projects.${row.column_name} INSERT`);
   const denied = [
     ['create-schema', 'CREATE SCHEMA yawrd_07b_forbidden'],
     ['create-yawrd-table', 'CREATE TABLE yawrd.forbidden(id integer)'],
@@ -47,7 +57,7 @@ export async function verifyRuntime(sql) {
     ['assume-migration-role', 'SET ROLE neondb_owner'],
     ['grant-admin-membership', 'GRANT neon_superuser TO yawrd_07b_runtime'],
     ['read-migration-ledger', 'SELECT * FROM public.yawrd_migrations'],
-    ['insert-project', "INSERT INTO yawrd.projects(network,id,creator_account_id,name,description,objectives,participation,rewards) VALUES ('testnet','dev-forbidden','nobody.testnet','test','test','[]','test','test')"],
+    ['insert-published-project', "INSERT INTO yawrd.projects(network,id,creator_account_id,name,description,objectives,participation,rewards,published_at) VALUES ('testnet','dev-forbidden','nobody.testnet','test','test','[]','test','test',clock_timestamp())"],
     ['update-project', "UPDATE yawrd.projects SET name=name WHERE false"],
     ['update-restricted-content', 'UPDATE yawrd.restricted_content SET content=content WHERE false'],
     ['update-application', 'UPDATE yawrd.applications SET introduction=introduction WHERE false'],
@@ -67,12 +77,18 @@ export async function verifyRuntime(sql) {
     } catch (error) { code = error?.code; }
     assert.equal(code, '42501', `${label} must fail with insufficient_privilege`);
   }
-  return { role: 'yawrd_07b_runtime', tablePrivilegeChecks: 49, updateColumnAllowlist: 'passed', deniedOperations: denied.length, ddlAndRoleAdministration: 'denied' };
+  return { role: 'yawrd_07b_runtime', tablePrivilegeChecks: 49, updateColumnAllowlist: 'passed', genesisDraftLinking, projectInsertColumnAllowlist: 'passed', deniedOperations: denied.length, ddlAndRoleAdministration: 'denied',
+    ...(genesisPublication ? { genesisPublication: true, projectUpdate: 'published_at_only' } : {}) };
 }
 
 if (process.argv[1] && import.meta.url === new URL(process.argv[1], 'file:').href) {
   try {
-    const result = await verifyRuntime(neon(developmentDatabaseUrl()));
+    await import('./load-environment.mjs');
+    const { neon } = await import('@neondatabase/serverless');
+    const result = await verifyRuntime(neon(developmentDatabaseUrl()), {
+      genesisDraftLinking: process.env.YAWRD_ENABLE_GENESIS_DRAFT_LINKING === '1',
+      genesisPublication: process.env.YAWRD_ENABLE_GENESIS_PUBLICATION === '1',
+    });
     console.log(JSON.stringify({ status: 'passed', ...result }, null, 2));
   } catch {
     console.error('Restricted development runtime verification failed; credentials and database details suppressed.');

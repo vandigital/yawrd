@@ -2,15 +2,20 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buildYawrdCreation, type CreationInput, type CreationPlan } from "../../src/create-yawrd";
-import { BuoyMark } from "../components/buoy-mark";
+import Image from "next/image";
+import styles from "./create.module.css";
 import { useTestnetWallet } from "../use-testnet-wallet";
-import { ProjectCover, ProjectHeading } from "../components/project-presentation";
+import { ProjectHeading } from "../components/project-presentation";
 import { CreationPanel } from "../components/creation-panel";
 import { testnetFactorySettings } from "../../src/testnet-factory-settings";
 
-// Existing illustrative address; no Testnet factory deployment is verified here.
-const PREVIEW_FACTORY = "sputnik-dao.near";
+// Synthetic validation input only; never displayed as a configured deployment target.
+const PREVIEW_FACTORY = "preview-factory.testnet";
 const CREATION_FACTORY = testnetFactorySettings?.factoryAccountId ?? PREVIEW_FACTORY;
+function displayProjectAddress(plan: CreationPlan): string {
+  return testnetFactorySettings ? plan.daoAccountId : `${plan.factoryCall.args.name}.[Testnet factory]`;
+}
+
 const STEP_TITLES = ["Yawrd Details", "Yawrd Stewards", "Yawrd Review"] as const;
 
 type Step = 1 | 2 | 3;
@@ -56,7 +61,7 @@ export default function OpenYawrdPage() {
   const [purpose, setPurpose] = useState("A shared place to bring neighbors together around food, ideas, and small projects that make our corner of the city feel more connected.");
   const [label, setLabel] = useState("the-common-table");
   const [labelEdited, setLabelEdited] = useState(false);
-  const [additionalStewards, setAdditionalStewards] = useState(["maya.demo.near", "jules.demo.near"]);
+  const [additionalStewards, setAdditionalStewards] = useState(["maya.example.testnet"]);
   const [threshold, setThreshold] = useState("2");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
@@ -96,7 +101,7 @@ export default function OpenYawrdPage() {
 
   function goToStep(next: Step) {
     setStep(next);
-    stepsNavRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    stepsNavRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
   }
 
   function nextStep() {
@@ -112,18 +117,19 @@ export default function OpenYawrdPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#0d1716] text-[#e9f1ee]">
+    <main className={styles.page}>
+      <a href="#create-content" className={styles.skip}>Skip to creation details</a>
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_72%_0%,rgba(61,140,138,0.17),transparent_45%)]" />
       <div aria-hidden="true" className="grid-texture pointer-events-none absolute inset-0 opacity-30" />
 
-      <div className="relative mx-auto max-w-[1320px] px-5 pb-16 sm:px-8 lg:px-12">
-        <header className="flex min-h-20 items-center justify-between border-b border-white/[0.09] sm:min-h-24">
+      <div className={styles.container}>
+        <header className={styles.header}>
           <a href="/" className="flex items-center gap-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c2dedd]" aria-label="Yawrd home">
-            <BuoyMark className="size-9 shrink-0" />
+            <Image src="/brand/yawrd-buoy.webp" alt="" width={159} height={192} unoptimized className={styles.buoy} />
             <span className="text-[22px] font-semibold tracking-[-0.06em]">yawrd<span className="text-[#73aaa5]">.</span></span>
           </a>
-          <div className="flex items-center gap-3">
-            <span className="rounded-full border border-[#3d8c8a]/50 bg-[#3d8c8a]/10 px-3 py-2 text-[11px] font-semibold text-[#c2dedd]">Testnet · Local preview</span>
+          <div className={styles.wallet}>
+            <span className="rounded-full border border-[#3d8c8a]/50 bg-[#3d8c8a]/10 px-3 py-2 text-[11px] font-semibold text-[#c2dedd]">Testnet · Preview</span>
             {wallet.accountId ? (
               <button type="button" onClick={wallet.disconnect} disabled={wallet.busy} className="rounded-xl border border-[#456058] px-3 py-2 text-xs font-medium text-[#d6e6df] hover:border-[#c2dedd] disabled:opacity-50">Disconnect</button>
             ) : (
@@ -134,18 +140,21 @@ export default function OpenYawrdPage() {
         {wallet.error && <p role="alert" className="mt-4 field-error">{wallet.error}</p>}
         {wallet.ready && !wallet.available && <p role="alert" className="mt-4 field-error">Meteor Wallet is unavailable for Testnet connection.</p>}
 
-        <section className="pb-9 pt-12 sm:pb-12 sm:pt-16 lg:pt-[72px]">
-          <h1 className="max-w-[900px] text-[clamp(3.15rem,6vw,5.8rem)] leading-[1.02] font-medium tracking-[-0.065em] text-white">Create your Yawrd</h1>
-          <p className="mt-5 max-w-[670px] text-[16px] leading-[1.65] text-[#b8cec5] sm:text-[18px]">A place where people and their agents come together to build what&apos;s next</p>
+        <section className={styles.intro}>
+          <p className={styles.eyebrow}>From idea to a shared project</p>
+          <h1>Create your <span>Yawrd</span></h1>
+          <p className={styles.subtitle}>Give your project a place to begin.</p>
+          <p className={styles.description}>Set the details, choose your Stewards, then review your Project Rules. Your preview updates as you go.</p>
+          <p className={styles.notice}>{testnetFactorySettings ? "Opening is a separate wallet action with a setup deposit and network fees." : "Preview only · Testnet opening is currently unavailable. You can prepare and review your details; nothing is opened or funded."}</p>
         </section>
 
-        <nav ref={stepsNavRef} aria-label="Creation steps" className="mb-7 border-b border-white/[0.1] sm:mb-8">
+        <nav ref={stepsNavRef} aria-label="Creation steps" className={styles.steps}>
           <ol className="grid grid-cols-3 gap-2 sm:gap-6">
             {STEP_TITLES.map((title, index) => {
               const number = (index + 1) as Step;
               return (
-                <li key={title} aria-current={step === number ? "step" : undefined} className={`flex min-h-[68px] flex-col justify-center gap-1 border-b-2 pb-3 pt-2 text-[12px] font-medium leading-4 text-white sm:min-h-0 sm:flex-row sm:items-center sm:justify-start sm:gap-3 sm:py-4 sm:text-sm ${step === number ? "border-[#c2dedd]" : "border-transparent"}`}>
-                  <span className="text-[11px] font-semibold tabular-nums text-[#87aaa2]">0{number}</span>
+                <li key={title} aria-current={step === number ? "step" : undefined} className={styles.step}>
+                  <span className={styles.stepNumber}>{number < step ? "✓" : `0${number}`}</span>
                   <span>{title}</span>
                 </li>
               );
@@ -153,8 +162,8 @@ export default function OpenYawrdPage() {
           </ol>
         </nav>
 
-        <div className={step === 3 ? "mx-auto max-w-[880px]" : "grid items-start gap-6 lg:grid-cols-[minmax(0,1.16fr)_minmax(340px,0.84fr)] lg:gap-8"}>
-          <section aria-labelledby="step-title" className="rounded-[24px] border border-white/[0.1] bg-[#111e1c]/95 p-6 shadow-[0_24px_70px_rgba(0,0,0,0.14)] sm:p-8 lg:p-10">
+        <div id="create-content" tabIndex={-1} className={step === 3 ? "mx-auto max-w-[880px]" : "grid items-start gap-6 lg:grid-cols-[minmax(0,1.16fr)_minmax(340px,0.84fr)] lg:gap-8"}>
+          <section aria-labelledby="step-title" className={styles.form}>
             <h2 id="step-title" className="mb-8 flex items-baseline gap-4 border-b border-white/[0.08] pb-6 text-[26px] font-medium tracking-[-0.04em] text-white sm:text-[30px]">
               <span className="text-[13px] font-medium tabular-nums tracking-normal text-[#91ada5]">0{step}</span>
               {STEP_TITLES[step - 1]}
@@ -200,6 +209,7 @@ export default function OpenYawrdPage() {
                 </div>
                 <div>
                   <span className="field-label">Additional Stewards <span className="font-normal text-[#78958e]">(optional)</span></span>
+                  <p className="field-help mb-3">The example account is illustrative. Replace it with your second Steward’s Testnet account. Testnet opening requires two Stewards and both approvals.</p>
                   <div className="space-y-2.5">
                     {additionalStewards.map((account, index) => (
                       <div key={index} className="flex gap-2">
@@ -229,7 +239,7 @@ export default function OpenYawrdPage() {
                   <dl className="space-y-5 rounded-2xl border border-white/[0.09] bg-[#14221f] p-5 sm:p-6">
                     <div><dt className="review-label">Project name</dt><dd className="mt-1 text-xl font-medium text-[#e8f2ee]">{result.plan.initializer.config.name}</dd></div>
                     <div><dt className="review-label">Short description</dt><dd className="mt-1 text-sm leading-7 text-[#bed1c9]">{result.plan.initializer.config.purpose}</dd></div>
-                    <div><dt className="review-label">{testnetFactorySettings ? "Intended project address" : "Example project address"}</dt><dd className="mt-1 break-all font-mono text-sm text-[#b8d9d2]">{result.plan.daoAccountId}</dd></div>
+                    <div><dt className="review-label">{testnetFactorySettings ? "Intended project address" : "Example project address"}</dt><dd className="mt-1 break-all font-mono text-sm text-[#b8d9d2]">{displayProjectAddress(result.plan)}</dd></div>
                   </dl>
                 </div>
                 <div>
@@ -257,21 +267,23 @@ export default function OpenYawrdPage() {
 
             <div className={`mt-9 flex items-center gap-3 border-t border-white/[0.08] pt-7 ${step === 1 ? "justify-end" : step === 3 ? "justify-start" : "justify-between"}`}>
               {step > 1 && <button type="button" onClick={() => goToStep(step === 3 ? 2 : 1)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#456058] px-5 py-3 text-sm font-medium text-[#d6e6df] transition-colors hover:border-[#c2dedd] hover:bg-[#1b302a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2dedd]"><ArrowIcon back />Back</button>}
-              {step < 3 && <button type="button" onClick={nextStep} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#c2dedd] px-5 py-3 text-sm font-semibold text-[#10211f] transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c2dedd]">Next<ArrowIcon /></button>}
+              {step < 3 && <button type="button" onClick={nextStep} className={styles.next}>Next<ArrowIcon /></button>}
             </div>
           </section>
 
           {step < 3 && (
-            <aside aria-labelledby="preview-title" className="lg:sticky lg:top-8">
+            <aside aria-labelledby="preview-title" className={`${styles.preview} lg:sticky lg:top-8`}>
               <div className="overflow-hidden rounded-[24px] border border-[#5b918c]/35 bg-[#162521] shadow-[0_24px_70px_rgba(0,0,0,0.17)]">
-                <ProjectCover className="h-20 sm:h-24" />
+                <div aria-hidden="true" className={styles.previewCover}>
+                  <Image src="/brand/yawrd-buoy.webp" alt="" width={159} height={192} unoptimized className={styles.previewBuoy} />
+                </div>
                 <div className="p-6 sm:p-8">
-                  <h2 id="preview-title" className="text-base font-medium text-white">Live preview</h2>
+                  <h2 id="preview-title" className={styles.eyebrow}>Live preview</h2>
                   {result.preview ? (
                     <div className="mt-5">
                       <ProjectHeading name={result.preview.initializer.config.name} description={result.preview.initializer.config.purpose} />
                       <div className="my-6 h-px bg-white/[0.1]" />
-                      <p className="break-all font-mono text-xs leading-6 text-[#b9d7d0]">{result.preview.daoAccountId}</p>
+                      <p className="break-all font-mono text-xs leading-6 text-[#b9d7d0]">{displayProjectAddress(result.preview)}</p>
                       <p className="mt-4 text-sm text-[#c6ded5]">{result.preview.initializer.policy.roles[0].kind.Group.length} Stewards · {result.preview.initializer.policy.default_vote_policy.threshold} approvals needed</p>
                     </div>
                   ) : (
@@ -281,7 +293,7 @@ export default function OpenYawrdPage() {
                     </div>
                   )}
                 </div>
-                <p className="border-t border-white/[0.08] bg-[#12201d] px-6 py-4 text-xs leading-5 text-[#91aca4] sm:px-8">Example address is not verified on Testnet · Nothing has been opened or funded</p>
+                <p className="border-t border-white/[0.08] bg-[#12201d] px-6 py-4 text-xs leading-5 text-[#91aca4] sm:px-8">{testnetFactorySettings ? "Intended address is not yet verified on Testnet · Nothing has been opened or funded" : "Illustrative address · Testnet factory not configured · Nothing has been opened or funded"}</p>
               </div>
             </aside>
           )}

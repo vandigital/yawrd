@@ -253,5 +253,5 @@ test('actual SQL guards bind identity and membership at insert/read; draft remai
   assert.match(draft, /GRANT SELECT ON yawrd.agent_associations TO yawrd_07b_runtime/);
   assert.match(draft, /GRANT INSERT \(application_id, network, project_id, agent_reference, consent_version\)/);
   assert.doesNotMatch(draft, /GRANT (?:UPDATE|DELETE|ALL|EXECUTE)/);
-  assert.deepEqual(readdirSync(new URL('../migrations/', import.meta.url)), ['001_participants.sql']);
+  assert.deepEqual(readdirSync(new URL('../migrations/', import.meta.url)).sort(), ['001_participants.sql', '003_genesis_draft_linking.sql']);
 });

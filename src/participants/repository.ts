@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Query, Row } from './database.ts';
 import type { AgentAssociation, Application, ParticipantView, PersistedProject } from './types.ts';
+import { GENESIS_YAW_001, GENESIS_PUBLICATION_CONSENT_VERSION, matchesGenesisIdentity, matchesGenesisProject, type GenesisDraftStatus, type GenesisPublication } from '../genesis/yaw-001.ts';
 
 export class WorkflowError extends Error {
   readonly code: string;
@@ -14,10 +15,84 @@ const liveSession = `s.token_hash = $2 AND s.network = 'testnet' AND s.revoked_a
 function application(row: Row): Application {
   return { id: String(row.id), accountId: String(row.account_id), introduction: String(row.introduction), status: (row.decision ?? 'pending') as Application['status'], reviewerAccountId: row.reviewer_account_id ? String(row.reviewer_account_id) : null };
 }
+function persistedProject(p: Row): PersistedProject {
+  return { id: String(p.id), network: 'testnet', creatorAccountId: String(p.creator_account_id), name: String(p.name), description: String(p.description), objectives: [...p.objectives as string[]], participation: String(p.participation), rewards: String(p.rewards) };
+}
 
 export class ParticipantRepository {
   readonly query: Query;
   constructor(query: Query) { this.query = query; }
+
+  async genesisStatus(hash: string | null): Promise<GenesisDraftStatus> {
+    fail(hash, 'sign_in_required', 401);
+    const g = GENESIS_YAW_001;
+    // Unauthorized sessions cannot join unpublished project fields. Both the ID
+    // and DAO are checked so an association under another ID is also a conflict.
+    const rows = await this.query(`SELECT s.account_id, p.id, p.network, p.creator_account_id, p.dao_account_id,
+      p.name, p.description, p.objectives, p.participation, p.rewards, p.published_at, p.created_at
+      FROM yawrd.sessions s LEFT JOIN yawrd.projects p ON p.network = 'testnet'
+        AND (p.id = $1 OR p.dao_account_id = $3) AND s.account_id = $4
+      WHERE ${liveSession}`, [g.id, hash, g.daoAccountId, g.creatorAccountId]);
+    fail(rows.length, 'sign_in_required', 401);
+    fail(rows[0].account_id === g.creatorAccountId, 'creator_only', 403);
+    fail(rows.length === 1, 'genesis_conflict', 409);
+    const p = rows[0];
+    if (p.id === null) return { linked: false, project: null };
+    fail(matchesGenesisProject(p), 'genesis_conflict', 409);
+    return { linked: true, project: { ...persistedProject(p), daoAccountId: g.daoAccountId, publishedAt: null, createdAt: new Date(p.created_at as string | Date).toISOString() } };
+  }
+
+  async linkGenesis(hash: string | null): Promise<GenesisDraftStatus> {
+    fail(hash, 'sign_in_required', 401);
+    const g = GENESIS_YAW_001;
+    // The existing published_at default is NULL. No INSERT permission on that
+    // column is needed or granted. Actor authorization occurs in the write itself.
+    await this.query(`INSERT INTO yawrd.projects(network, id, creator_account_id, dao_account_id, name, description, objectives, participation, rewards)
+      SELECT 'testnet', $1, s.account_id, $3, $5, $6, $7::jsonb, $8, $9
+      FROM yawrd.sessions s WHERE ${liveSession} AND s.account_id = $4
+      ON CONFLICT DO NOTHING`, [g.id, hash, g.daoAccountId, g.creatorAccountId, g.name, g.description, JSON.stringify(g.objectives), g.participation, g.rewards]);
+    // A separate statement observes the concurrent winner after either unique
+    // constraint waits. Never update an existing record, even on identical retries.
+    const status = await this.genesisStatus(hash);
+    fail(status.linked, 'genesis_conflict', 409);
+    return status;
+  }
+
+  async publishGenesis(hash: string | null, consent: unknown, consentVersion: unknown): Promise<GenesisPublication> {
+    fail(hash, 'sign_in_required', 401);
+    fail(consent === true && consentVersion === GENESIS_PUBLICATION_CONSENT_VERSION, 'publication_consent_required');
+    const g = GENESIS_YAW_001;
+    const receipt = (publishedAt: unknown): GenesisPublication => ({ published: true, projectId: g.id, network: g.network, publishedAt: new Date(publishedAt as string | Date).toISOString() });
+    // Authorize and compare every canonical field in the atomic write. The NULL
+    // predicate preserves the first timestamp and avoids updates on retries.
+    const updated = await this.query(`UPDATE yawrd.projects p SET published_at = statement_timestamp()
+      FROM yawrd.sessions s WHERE ${liveSession} AND s.account_id = $4
+        AND p.network = 'testnet' AND p.id = $1 AND p.creator_account_id = s.account_id
+        AND p.creator_account_id = $4 AND p.dao_account_id = $3
+        AND p.name = $5 AND p.description = $6 AND p.objectives = $7::jsonb
+        AND p.participation = $8 AND p.rewards = $9 AND p.published_at IS NULL
+        AND NOT EXISTS (SELECT 1 FROM yawrd.projects other WHERE other.network = p.network
+          AND other.dao_account_id = $3 AND other.id <> p.id)
+      RETURNING p.published_at`, [g.id, hash, g.daoAccountId, g.creatorAccountId, g.name, g.description, JSON.stringify(g.objectives), g.participation, g.rewards]);
+    if (updated.length) {
+      fail(updated.length === 1, 'genesis_conflict', 409);
+      return receipt(updated[0].published_at);
+    }
+    // A new statement sees the committed concurrent winner after UPDATE waits.
+    // This read diagnoses denials/conflicts or returns the original publication.
+    const rows = await this.query(`SELECT s.account_id, p.id, p.network, p.creator_account_id, p.dao_account_id,
+      p.name, p.description, p.objectives, p.participation, p.rewards, p.published_at
+      FROM yawrd.sessions s LEFT JOIN yawrd.projects p ON p.network = 'testnet'
+        AND (p.id = $1 OR p.dao_account_id = $3) AND s.account_id = $4
+      WHERE ${liveSession}`, [g.id, hash, g.daoAccountId, g.creatorAccountId]);
+    fail(rows.length, 'sign_in_required', 401);
+    fail(rows[0].account_id === g.creatorAccountId, 'creator_only', 403);
+    fail(rows.length === 1, 'genesis_conflict', 409);
+    fail(rows[0].id !== null, 'not_found', 404);
+    fail(matchesGenesisIdentity(rows[0]), 'genesis_conflict', 409);
+    fail(rows[0].published_at != null, 'publication_unavailable', 409);
+    return receipt(rows[0].published_at);
+  }
 
   async agentAssociation(id: string, sessionHash: string): Promise<AgentAssociation | null> {
     const [row] = await this.query(`SELECT s.account_id, d.application_id, g.agent_reference, g.consent_version, g.authorized_at
@@ -57,7 +132,7 @@ export class ParticipantRepository {
     const [p] = await this.query(`SELECT id, network, creator_account_id, name, description, objectives, participation, rewards
       FROM yawrd.projects WHERE network = 'testnet' AND id = $1 AND published_at IS NOT NULL`, [id]);
     if (!p) return null;
-    return { id: String(p.id), network: 'testnet', creatorAccountId: String(p.creator_account_id), name: String(p.name), description: String(p.description), objectives: p.objectives as string[], participation: String(p.participation), rewards: String(p.rewards) };
+    return persistedProject(p);
   }
 
   async view(id: string, sessionHash: string | null): Promise<ParticipantView> {
