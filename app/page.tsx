@@ -78,7 +78,7 @@ export default function LandingPage() {
               </li>)}
             </ul>
           </div>
-          <a href="https://github.com/vandigital/yawrd-build-progress" className="landing-primary landing-github">View on GitHub <Arrow external /></a>
+          <Link href="/yawrd/yaw-001" className="landing-primary landing-github">Explore this Yawrd <Arrow /></Link>
         </div>
       </section>
 

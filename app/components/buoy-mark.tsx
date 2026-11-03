@@ -1,5 +1,10 @@
 import type { SVGProps } from "react";
 
+/** Current site brand artwork. Keep the default avatar glyph separate below. */
+export function YawrdBrandIcon({ className = "" }: { className?: string }) {
+  return <img src="/brand/yawrd-buoy.webp" width={159} height={192} alt="" className={`object-contain ${className}`} />;
+}
+
 type BuoyMarkProps = SVGProps<SVGSVGElement> & {
   primary?: string;
   accent?: string;

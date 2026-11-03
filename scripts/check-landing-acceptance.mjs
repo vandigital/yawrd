@@ -152,7 +152,7 @@ try {
     assert.deepEqual(await evaluate(`(async () => { const img = new Image(); img.src = document.querySelector('link[rel="icon"]').href; await img.decode(); return [img.naturalWidth, img.naturalHeight]; })()`), [192, 192]);
     assert.equal(await evaluate(`document.querySelectorAll('.landing-features li').length`), 5);
     assert.equal(await evaluate(`document.querySelector('.landing-planned').textContent`), 'Planned functionality');
-    assert.equal(await evaluate(`document.querySelector('.landing-github').href`), 'https://github.com/vandigital/yawrd-build-progress');
+    assert.equal(await evaluate(`document.querySelector('.landing-github').href`), `${origin}/yawrd/yaw-001`);
     assert.equal(await evaluate(`document.querySelectorAll('a').length`), 8);
     assert.equal(await evaluate(`document.querySelector('.landing-footer a[href="/docs"]').textContent`), 'Docs');
     assert.equal(await evaluate(`[...document.images].every(img => img.complete && img.naturalWidth > 0)`), true);
