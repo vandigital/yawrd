@@ -41,10 +41,10 @@ test('fixed Reward Payout wallet and chain interactions stay explicit and receip
     await writeFile(temporary + '/tsx-loader.cjs', 'const ts=require(' + JSON.stringify(require.resolve('typescript')) + ');module.exports=function(source){return ts.transpileModule(source,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText};');
     const entry = 'import React from "react";\nimport {createRoot} from "react-dom/client";\n'
       + 'import {RewardPayoutProvider,RewardPayoutWorkspace,RewardPayoutIdentity} from ' + JSON.stringify(resolve('app/components/reward-payout.tsx')) + ';\n'
-      + 'import {PAYOUT,payoutDescription,transferKind,PAYOUT_ATTEMPT_KEY} from ' + JSON.stringify(resolve('src/rewards/payout.ts')) + ';\n'
+      + 'import {PAYOUT,payoutDescription,transferKind,payoutTransaction,PAYOUT_ATTEMPT_KEY} from ' + JSON.stringify(resolve('src/rewards/payout.ts')) + ';\n'
       + String.raw`
 const root = createRoot(document.getElementById('root'));
-let actor = PAYOUT.creator, connected = PAYOUT.creator, proposals = [], transaction = null, mode = 'normal', mount = 0;
+let actor = PAYOUT.creator, connected = PAYOUT.creator, proposals = [], transaction = null, mode = 'normal', mount = 0, finishApproval;
 const signed = [], hash = 'T'.repeat(44), blockHash = 'B'.repeat(44);
 const p = () => ({id:1,proposer:PAYOUT.creator,description:payoutDescription,kind:transferKind(),status:'InProgress',votes:{},last_actions_log:[]});
 const outcome = tx => {
@@ -78,6 +78,7 @@ function app(next=actor,walletAccount=next){
  actor=next;connected=walletAccount;
  const wallet={accountId:connected,busy:false,getContext:()=>({accountId:connected,network:'testnet'}),signPayout:async tx=>{
   signed.push(tx);
+  if(mode==='stall-approval')await new Promise((resolve,reject)=>{finishApproval=()=>reject(Error('wallet authorization ended without a result'))});
   if(mode==='unknown')throw Error('uncertain outcome');
   if(tx.actions[0].params.methodName==='add_proposal')proposals=[p()];
   else {proposals[0].votes[tx.signerId]='Approve';if(Object.keys(proposals[0].votes).length===2)proposals[0].status='Approved';}
@@ -86,6 +87,17 @@ function app(next=actor,walletAccount=next){
  root.render(React.createElement(RewardPayoutProvider,{key:++mount},React.createElement('div',{id:'identity'},React.createElement(RewardPayoutIdentity)),React.createElement(RewardPayoutWorkspace,{accountId:actor,wallet})));
 }
 window.ux={signed,app,reset(){proposals=[];transaction=null;mode='normal';localStorage.clear();history.replaceState({},'', '/');app(PAYOUT.creator)},unknown(){mode='unknown'},landed(){mode='normal';proposals=[p()]},offline(){mode='offline'},approved(){mode='normal';proposals=[{...p(),status:'Approved',votes:{'yawrd1.testnet':'Approve','yawrd.testnet':'Approve'}}];transaction=null;localStorage.clear();app()},redirect(){mode='normal';proposals=[p()];const tx=signed[signed.length-1];transaction=outcome(tx);history.replaceState({},'', '?transactionHashes='+hash);app()}};
+Object.assign(window.ux,{
+ approvalReady(){proposals=[p()];transaction=null;mode='normal';localStorage.clear();localStorage.setItem('unrelated-synthetic-session','preserve');history.replaceState({},'', '/');app(PAYOUT.creator)},
+ stallApproval(){mode='stall-approval';finishApproval=undefined},approvalHeld(){return !!finishApproval},closeApproval(){mode='normal';finishApproval()},
+ restoreApproval(kind){
+  proposals=[p()];transaction=null;mode='normal';localStorage.clear();localStorage.setItem('unrelated-synthetic-session','preserve');history.replaceState({},'', '/');
+  const attempt={purpose:'approve',signer:PAYOUT.creator,proposalId:1,phase:'awaiting'};
+  if(kind==='pending-hash'){transaction=outcome(payoutTransaction('approve',PAYOUT.creator,p()));transaction.final_execution_status='EXECUTED_OPTIMISTIC';attempt.hash=hash}
+  if(kind==='recorded-vote')proposals[0].votes[PAYOUT.creator]='Approve';
+  localStorage.setItem(PAYOUT_ATTEMPT_KEY,JSON.stringify(attempt));app(PAYOUT.creator);
+ },attempt(){return localStorage.getItem(PAYOUT_ATTEMPT_KEY)}
+});
 window.pageSentinel='same-document';app();
 `;
     await writeFile(temporary + '/entry.js', entry);
@@ -199,6 +211,34 @@ window.pageSentinel='same-document';app();
       assert.equal(await evaluate('!!' + button('Create Payout Proposal in Meteor')), false);
       assert.equal(await evaluate('!!' + button('Approve Payout Proposal in Meteor')), false);
       assert.equal(await evaluate('window.ux.signed.length'), 4);
+    });
+    await t.test('Refresh preserves a live wallet approval, then recovers the abandoned marker without changing Proposal #1', async () => {
+      await evaluate('window.ux.approvalReady()'); await waitFor('!!' + button('Approve Payout Proposal in Meteor'));
+      await evaluate('window.ux.stallApproval()'); await click('Approve Payout Proposal in Meteor');
+      await waitFor('window.ux.approvalHeld() && document.body.textContent.includes("awaiting reconciliation")');
+      assert.equal(await evaluate(button('Refresh payout status') + '.disabled'), true);
+      assert.equal(await evaluate('JSON.parse(window.ux.attempt()).phase'), 'awaiting');
+      assert.equal(await evaluate('window.ux.signed.length'), 5);
+      await evaluate('window.ux.closeApproval()'); await waitFor('!' + button('Refresh payout status') + '.disabled');
+      await click('Refresh payout status'); await waitFor('!!' + button('Approve Payout Proposal in Meteor'));
+      assert.equal(await evaluate('window.ux.attempt()'), null);
+      assert.equal(await evaluate('document.body.textContent.includes("awaiting reconciliation")'), false);
+      assert.equal(await evaluate('document.getElementById("reward-payout").textContent.includes("#1 · InProgress · 0/2 approvals")'), true);
+      assert.equal(await evaluate('localStorage.getItem("unrelated-synthetic-session")'), 'preserve');
+      assert.equal(await evaluate('!!' + button('Create Payout Proposal in Meteor')), false);
+      assert.equal(await evaluate('window.ux.signed.length'), 5);
+    });
+    await t.test('reload recovery restores approval only for an abandoned hashless attempt, never a pending transaction or recorded vote', async () => {
+      await evaluate('window.ux.restoreApproval("abandoned")'); await waitFor('!!' + button('Approve Payout Proposal in Meteor'));
+      assert.equal(await evaluate('window.ux.attempt()'), null);
+      assert.equal(await evaluate('localStorage.getItem("unrelated-synthetic-session")'), 'preserve');
+      await evaluate('window.ux.restoreApproval("pending-hash")'); await waitFor('document.body.textContent.includes("awaiting reconciliation") && !' + button('Refresh payout status') + '.disabled');
+      assert.equal(await evaluate('!!' + button('Approve Payout Proposal in Meteor')), false);
+      assert.equal(await evaluate('JSON.parse(window.ux.attempt()).hash'), 'T'.repeat(44));
+      await evaluate('window.ux.restoreApproval("recorded-vote")'); await waitFor('document.body.textContent.includes("vote is already recorded") && !' + button('Refresh payout status') + '.disabled');
+      assert.equal(await evaluate('!!' + button('Approve Payout Proposal in Meteor')), false);
+      assert.equal(await evaluate('JSON.parse(window.ux.attempt()).phase'), 'confirmed');
+      assert.equal(await evaluate('window.ux.signed.length'), 5);
     });
     assert.deepEqual(blocked, []);
   } finally {

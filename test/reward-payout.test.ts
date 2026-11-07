@@ -22,6 +22,7 @@ class Store implements AttemptStore {
   saved: string | null = null;
   getItem(key: string) { assert.equal(key, PAYOUT_ATTEMPT_KEY); return this.saved; }
   setItem(key: string, value: string) { assert.equal(key, PAYOUT_ATTEMPT_KEY); this.saved = value; }
+  removeItem(key: string) { assert.equal(key, PAYOUT_ATTEMPT_KEY); this.saved = null; }
 }
 function outcome(tx: PayoutTransaction, paid = false): any {
   const p = tx.actions[0].params;
@@ -142,6 +143,100 @@ test('uncertain outcomes survive reload, do not auto-sign or allow duplicates, a
   f.set([proposal()]); await resumed.refresh();
   assert.equal(resumed.state.attempt!.phase, 'confirmed');
   await resumed.submit('create', wallet(), auth()); assert.match(resumed.state.error, /already exists/);
+});
+test('abandoned hashless approval markers recover on Refresh and reload, preserving Proposal #1 and requiring a new explicit click', async () => {
+  for (const phase of ['awaiting', 'unknown']) {
+    const p = proposal(), f = fixture([p]), store = new Store();
+    store.saved = JSON.stringify({ purpose: 'approve', signer: PAYOUT.creator, proposalId: 1, phase });
+    const flow = new PayoutFlow(f.chain, store, () => {});
+    flow.state.error = 'Previous wallet outcome needs reconciliation.';
+    await flow.refresh();
+    assert.equal(store.saved, null); assert.equal(flow.state.attempt, null); assert.equal(flow.state.error, '');
+    assert.deepEqual(flow.state.snapshot!.proposal, p);
+    assert.equal(approvalCount(flow.state.snapshot!.proposal), 0);
+    let requested = 0;
+    await flow.submit('approve', wallet(PAYOUT.creator, async tx => {
+      requested++; assert.equal(tx.actions[0].params.methodName, 'act_proposal');
+      assert.equal(tx.actions[0].params.args.id, 1);
+      throw Object.assign(new Error('User rejected'), { code: 4001 });
+    }), auth());
+    assert.equal(requested, 1); assert.deepEqual(flow.state.snapshot!.proposal, p);
+  }
+});
+test('an active approval promise cannot be retired by its own Refresh or another flow reading 0/2', async () => {
+  const f = fixture([proposal()]), store = new Store();
+  const flow = new PayoutFlow(f.chain, store, () => {});
+  let started!: () => void, finish!: () => void;
+  const opened = new Promise<void>(resolve => { started = resolve; });
+  const pending = new Promise<void>(resolve => { finish = resolve; });
+  const sending = flow.submit('approve', wallet(PAYOUT.creator, async () => { started(); await pending; return undefined; }), auth());
+  await opened;
+  try {
+    const marker = store.saved;
+    await flow.refresh(); assert.equal(store.saved, marker); assert.equal(flow.state.busy, true);
+    const second = new PayoutFlow(f.chain, store, () => {});
+    await second.refresh(); assert.equal(store.saved, marker); assert.equal(second.state.attempt!.phase, 'awaiting');
+    assert.equal(approvalCount(second.state.snapshot!.proposal), 0);
+    await second.submit('approve', wallet(), auth()); assert.match(second.state.error, /still active/);
+  } finally { finish(); await sending; }
+  assert.equal(flow.state.attempt!.phase, 'unknown');
+  await flow.refresh(); assert.equal(store.saved, null); assert.equal(flow.state.attempt, null);
+});
+test('recorded votes resolve hashless approval markers without offering another vote', async () => {
+  for (const vote of ['Approve', 'Reject', 'Remove']) {
+    const f = fixture([proposal({ votes: { [PAYOUT.creator]: vote } })]), store = new Store();
+    store.saved = JSON.stringify({ purpose: 'approve', signer: PAYOUT.creator, proposalId: 1, phase: 'awaiting' });
+    const flow = new PayoutFlow(f.chain, store, () => {}); await flow.refresh();
+    assert.equal(flow.state.attempt!.phase, 'confirmed'); assert.ok(store.saved);
+    await flow.submit('approve', wallet(), auth()); assert.match(flow.state.error, /already voted/);
+  }
+});
+test('known approval hashes remain blocked while pending or unverifiable, even when a vote is already visible', async () => {
+  for (const scenario of ['pending', 'pending-vote', 'unavailable', 'succeeded-no-vote', 'wrong-proposal']) {
+    const f = fixture([proposal({ votes: scenario === 'pending-vote' ? { [PAYOUT.creator]: 'Approve' } : {} })]), store = new Store();
+    store.saved = JSON.stringify({ purpose: 'approve', signer: PAYOUT.creator, proposalId: 1, phase: 'unknown', hash: txHash });
+    const marker = store.saved;
+    const tx = outcome(payoutTransaction('approve', PAYOUT.creator, proposal()));
+    if (scenario.startsWith('pending')) tx.final_execution_status = 'EXECUTED_OPTIMISTIC';
+    if (scenario === 'wrong-proposal') tx.transaction.actions[0].FunctionCall.args = btoa(JSON.stringify({ id: 99, action: 'VoteApprove', proposal: transferKind() }));
+    f.tx(scenario === 'unavailable' ? null : tx);
+    const flow = new PayoutFlow(f.chain, store, () => {}); await flow.refresh();
+    assert.equal(store.saved, marker, scenario); assert.equal(flow.state.attempt!.phase, 'unknown', scenario);
+    await flow.submit('approve', wallet(), auth()); assert.equal(store.saved, marker, scenario);
+  }
+});
+test('a finalized failed approval hash permits retry; a finalized successful recorded vote remains confirmed', async () => {
+  for (const failed of [true, false]) {
+    const f = fixture([proposal({ votes: failed ? {} : { [PAYOUT.creator]: 'Approve' } })]), store = new Store();
+    store.saved = JSON.stringify({ purpose: 'approve', signer: PAYOUT.creator, proposalId: 1, phase: 'unknown', hash: txHash });
+    const tx = outcome(payoutTransaction('approve', PAYOUT.creator, proposal()));
+    if (failed) tx.status = { Failure: { error: 'synthetic failure' } };
+    f.tx(tx); const flow = new PayoutFlow(f.chain, store, () => {}); await flow.refresh();
+    assert.equal(flow.state.attempt!.phase, failed ? 'failed' : 'confirmed');
+    assert.equal(flow.state.attempt!.hash, txHash);
+  }
+});
+test('manual pending hash evidence is retained before considering hashless approval recovery', async () => {
+  const f = fixture([proposal()]), store = new Store();
+  store.saved = JSON.stringify({ purpose: 'approve', signer: PAYOUT.creator, proposalId: 1, phase: 'awaiting' });
+  const tx = outcome(payoutTransaction('approve', PAYOUT.creator, proposal())); tx.final_execution_status = 'EXECUTED_OPTIMISTIC'; f.tx(tx);
+  const flow = new PayoutFlow(f.chain, store, () => {}); await flow.refresh([{ hash: txHash, signer: PAYOUT.creator }]);
+  assert.equal(flow.state.attempt!.hash, txHash); assert.equal(flow.state.attempt!.phase, 'unknown');
+});
+test('approval recovery never clears missing, conflicting, closed or replaced proposal attempts or an unverifiable read', async () => {
+  for (const scenario of ['missing', 'conflict', 'closed', 'other-id', 'offline', 'replacement']) {
+    const f = fixture(scenario === 'missing' ? [] : scenario === 'conflict' ? [proposal(), proposal({ id: 2 })]
+      : [proposal({ id: scenario === 'other-id' ? 2 : 1, status: scenario === 'closed' ? 'Expired' : 'InProgress' })]), store = new Store();
+    store.saved = JSON.stringify({ purpose: 'approve', signer: PAYOUT.creator, proposalId: 1, phase: 'awaiting' });
+    let expected = store.saved;
+    if (scenario === 'offline') f.unavailable();
+    if (scenario === 'replacement') {
+      const read = f.chain.read.bind(f.chain);
+      expected = JSON.stringify({ purpose: 'approve', signer: 'yawrd.testnet', proposalId: 1, phase: 'awaiting' });
+      f.chain.read = async e => { const snapshot = await read(e); store.saved = expected; return snapshot; };
+    }
+    const flow = new PayoutFlow(f.chain, store, () => {}); await flow.refresh(); assert.equal(store.saved, expected, scenario);
+  }
 });
 test('another tab pending attempt, corrupt storage, unavailable storage and changed account before authorization fail closed', async () => {
   for (const scenario of ['tab', 'corrupt', 'storage', 'account', 'unmount']) {

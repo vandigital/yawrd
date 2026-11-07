@@ -20,6 +20,7 @@ export function RewardPayoutProvider({ children }: { children: ReactNode }) {
     // Store public attempt metadata before requesting wallet authorization.
     const flow = new PayoutFlow(new PayoutChain(rpc), {
       getItem: key => window.localStorage.getItem(key), setItem: (key, v) => window.localStorage.setItem(key, v),
+      removeItem: key => window.localStorage.removeItem(key),
     }, state => { if (active) setValue({ state, flow }); });
     setValue({ state: flow.state, flow });
     const refresh = () => { if (document.visibilityState !== 'hidden') void flow.refresh(); };

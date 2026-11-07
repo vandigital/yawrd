@@ -6,6 +6,9 @@ export const PAYOUT = Object.freeze({ ...TASK_B_REWARD, creator: 'yawrd1.testnet
   stewards: ['yawrd1.testnet', 'yawrd.testnet'] as readonly string[],
   merge: '26d2d5e8b087749f47696ee27732a42f32929da7', bond: '0', gas: '200000000000000' });
 export const PAYOUT_ATTEMPT_KEY = 'yawrd:yaw-001:task-b:payout:v1';
+// The browser releases this lock when the approval promise ends or its page
+// unloads. A refresh in another mounted flow/tab cannot retire a live request.
+const APPROVAL_REQUEST_LOCK = `${PAYOUT_ATTEMPT_KEY}:approval-request`;
 export const payoutDescription = `YAW-001 Task B Reward Payout: 1 NEAR Testnet to ${PAYOUT.recipient}. Contribution request and founder acknowledgement recorded. ${PAYOUT.prUrl} Merge: ${PAYOUT.merge}`;
 export const transferKind = () => ({ Transfer: { token_id: '', receiver_id: PAYOUT.recipient, amount: PAYOUT.amountYocto, msg: null } });
 const canonical = (value: unknown): string => {
@@ -195,9 +198,9 @@ export class PayoutFlow {
   state: PayoutState = { ...initialPayoutState };
   private active = true;
   readonly chain: PayoutChain;
-  readonly store: AttemptStore;
+  readonly store: AttemptStore & { removeItem?: (key: string) => void };
   readonly changed: (s: PayoutState) => void;
-  constructor(chain: PayoutChain, store: AttemptStore, changed: (s: PayoutState) => void) {
+  constructor(chain: PayoutChain, store: AttemptStore & { removeItem?: (key: string) => void }, changed: (s: PayoutState) => void) {
     this.chain = chain; this.store = store; this.changed = changed;
     try {
       this.state.attempt = savedAttempt(store.getItem(PAYOUT_ATTEMPT_KEY));
@@ -209,36 +212,73 @@ export class PayoutFlow {
   async refresh(evidence: PayoutEvidence[] = []) {
     if (!this.active || this.state.busy) return;
     this.update({ busy: true });
-    try { await this.reconcile(evidence); }
+    try {
+      const marker = this.store.getItem(PAYOUT_ATTEMPT_KEY);
+      const attempt = savedAttempt(marker);
+      const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+      if (attempt?.purpose === 'approve' && !attempt.hash && ['awaiting', 'unknown'].includes(attempt.phase)
+        && locks && this.store.removeItem) {
+        await locks.request(APPROVAL_REQUEST_LOCK, { ifAvailable: true }, lock => this.reconcile(evidence, lock ? marker : null));
+      } else await this.reconcile(evidence);
+    }
     catch { this.update({ snapshot: null, error: 'Testnet payout state could not be verified. Actions are disabled. Refresh to try again.' }); }
     finally { this.update({ busy: false }); }
   }
-  private async reconcile(evidence: PayoutEvidence[] = []) {
+  private async reconcile(evidence: PayoutEvidence[] = [], recoverMarker: string | null = null) {
     // Another tab may have opened Meteor since this instance last rendered.
-    const attempt = savedAttempt(this.store.getItem(PAYOUT_ATTEMPT_KEY));
+    let attempt = savedAttempt(this.store.getItem(PAYOUT_ATTEMPT_KEY));
     this.update({ attempt });
     const snapshot = await this.chain.read([...(attempt?.hash ? [{ hash: attempt.hash, signer: attempt.signer }] : []), ...evidence]);
     if (attempt?.phase === 'confirmed' && !snapshot.proposal) throw new Error('A previously confirmed Payout Proposal is missing. Review its transaction evidence; creation remains blocked.');
     this.update({ snapshot, error: '' });
     if (attempt) {
       const p = snapshot.proposal;
-      if (!attempt.hash) for (const item of evidence.filter(e => e.signer === attempt.signer)) {
+      const signer = attempt.signer;
+      if (!attempt.hash) for (const item of evidence.filter(e => e.signer === signer)) {
         const verified = await this.chain.verify(item, p);
-        if (verified.purpose === attempt.purpose) { this.save({ ...attempt, hash: item.hash, phase: verified.state === 'failed' ? 'failed' : 'unknown' }); break; }
+        if (verified.purpose === attempt.purpose) { this.save({ ...attempt, hash: item.hash, phase: 'unknown' }); attempt = this.state.attempt!; break; }
       }
-      if ((attempt.purpose === 'create' && p) || (attempt.purpose === 'approve' && p && p.id === attempt.proposalId && Object.hasOwn(p.votes, attempt.signer))) this.save({ ...this.state.attempt!, phase: 'confirmed' });
-      else if (attempt.hash) {
+      // A known hash must resolve before a vote observation can unlock retry.
+      if (attempt.purpose === 'approve' && attempt.hash) {
+        const result = await this.chain.verify({ hash: attempt.hash, signer: attempt.signer }, p);
+        if (result.purpose !== attempt.purpose) throw new Error('Transaction does not match the saved payout attempt.');
+        if (result.state === 'pending') return;
+        if (result.state === 'failed') { this.save({ ...attempt, phase: 'failed' }); return; }
+      }
+      if ((attempt.purpose === 'create' && p) || (attempt.purpose === 'approve' && p && p.id === attempt.proposalId && Object.hasOwn(p.votes, attempt.signer))) this.save({ ...attempt, phase: 'confirmed' });
+      else if (attempt.purpose === 'create' && attempt.hash) {
         const result = await this.chain.verify({ hash: attempt.hash, signer: attempt.signer }, p);
         if (result.state === 'failed') this.save({ ...attempt, phase: 'failed' });
+      }
+      else if (recoverMarker && !attempt.hash && attempt.purpose === 'approve' && ['awaiting', 'unknown'].includes(attempt.phase)
+        && !evidence.length && !snapshot.conflicts.length && p && p.id === attempt.proposalId && matchingProposal(p)
+        && p.status === 'InProgress' && !Object.hasOwn(p.votes, attempt.signer)
+        && this.store.getItem(PAYOUT_ATTEMPT_KEY) === recoverMarker && this.store.removeItem) {
+        // Retire only the abandoned local approval marker. The proposal and
+        // wallet/session data are untouched; the next click reauthorizes afresh.
+        this.store.removeItem(PAYOUT_ATTEMPT_KEY);
+        this.update({ attempt: null, error: '' });
       }
     }
   }
   async submit(purpose: 'create' | 'approve', wallet: { getContext: () => { accountId: string | null; network: string }; signPayout: (tx: PayoutTransaction) => Promise<unknown> },
     context: () => Promise<PayoutContext>, stillCurrent: () => boolean = () => true) {
     if (!this.active || this.state.busy) return;
+    this.update({ busy: true, error: '' });
+    try {
+      const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+      if (purpose === 'approve' && locks) await locks.request(APPROVAL_REQUEST_LOCK, { ifAvailable: true }, async lock => {
+        if (!lock) throw new Error('An approval wallet request is still active. Finish or close that request before retrying.');
+        await this.submitRequest(purpose, wallet, context, stillCurrent);
+      });
+      else await this.submitRequest(purpose, wallet, context, stillCurrent);
+    } catch (error) { this.update({ error: error instanceof Error ? error.message : 'Approval request could not be prepared.' }); }
+    finally { this.update({ busy: false }); }
+  }
+  private async submitRequest(purpose: 'create' | 'approve', wallet: { getContext: () => { accountId: string | null; network: string }; signPayout: (tx: PayoutTransaction) => Promise<unknown> },
+    context: () => Promise<PayoutContext>, stillCurrent: () => boolean) {
     const account = wallet.getContext().accountId;
     let requested = false;
-    this.update({ busy: true, error: '' });
     try {
       const check = () => {
         if (!this.active || !stillCurrent() || !account || wallet.getContext().accountId !== account || wallet.getContext().network !== 'testnet') throw new Error('Wallet or sign-in changed. Refresh and review again.');
@@ -274,7 +314,7 @@ export class PayoutFlow {
       const notRequested = requested && (error as any)?.code === 'PAYOUT_NOT_REQUESTED';
       if (rejected || notRequested) { try { this.save({ ...this.state.attempt!, phase: rejected ? 'rejected' : 'failed' }); } catch { /* Keep durable awaiting record. */ } }
       this.update({ error: notRequested ? 'No wallet transaction was requested. Reconnect the selected Steward wallet, refresh and review again.' : rejected ? 'Wallet request cancelled. No transaction was confirmed. Refresh before trying again.' : requested ? 'Wallet outcome needs reconciliation. Refresh status and check wallet activity before retrying. No additional transaction was requested.' : error instanceof Error ? error.message : 'Payout action could not be prepared.' });
-    } finally { this.update({ busy: false }); }
+    }
   }
   async redirect(hash: string) {
     const a = this.state.attempt;
