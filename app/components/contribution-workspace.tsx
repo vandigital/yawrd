@@ -6,6 +6,7 @@ import type { IdentityChallenge } from '../../src/identity/types';
 import type { useTestnetWallet } from '../use-testnet-wallet';
 import { CONTRIBUTION_DESCRIPTION_LIMIT, contributionDescriptionError } from '../../src/contributions/validation';
 import styles from './contribution-workspace.module.css';
+import { RecipientRewardPaid } from './reward-payout';
 
 const descriptionLimitLabel = CONTRIBUTION_DESCRIPTION_LIMIT.toLocaleString('en-US');
 const messages: Record<string, string> = {
@@ -89,6 +90,7 @@ function TaskCard({ task, accountId, creator, preview, onSubmit, onAcknowledge }
       <span className={styles.badge}>{task.acknowledgement ? 'Prior acceptance acknowledged' : task.request ? 'Awaiting acknowledgement' : 'No in-app request'}</span></header>
     <a className={styles.evidence} href={task.prUrl} rel="noreferrer">Canonical GitHub evidence · PR #{task.ref === 'task-a' ? '2' : '4'}<span>{task.prUrl}</span></a>
     <p>{task.historicalNote}</p>
+    {!creator && !preview && <RecipientRewardPaid accountId={accountId} task={task} />}
     {task.request ? <section className={styles.record} aria-label="Contribution request receipt">
       <h4>Request received{preview ? ' · Illustrative record' : ''}</h4>
       <p>{task.request.description}</p>

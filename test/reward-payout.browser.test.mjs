@@ -41,11 +41,14 @@ test('fixed Reward Payout wallet and chain interactions stay explicit and receip
     await writeFile(temporary + '/tsx-loader.cjs', 'const ts=require(' + JSON.stringify(require.resolve('typescript')) + ');module.exports=function(source){return ts.transpileModule(source,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2020}}).outputText};');
     const entry = 'import React from "react";\nimport {createRoot} from "react-dom/client";\n'
       + 'import {RewardPayoutProvider,RewardPayoutWorkspace,RewardPayoutIdentity} from ' + JSON.stringify(resolve('app/components/reward-payout.tsx')) + ';\n'
+      + 'import {ContributionExperience} from ' + JSON.stringify(resolve('app/components/contribution-workspace.tsx')) + ';\n'
       + 'import {PAYOUT,payoutDescription,transferKind,payoutTransaction,PAYOUT_ATTEMPT_KEY} from ' + JSON.stringify(resolve('src/rewards/payout.ts')) + ';\n'
       + String.raw`
 const root = createRoot(document.getElementById('root'));
 let actor = PAYOUT.creator, connected = PAYOUT.creator, proposals = [], transaction = null, mode = 'normal', mount = 0, finishApproval;
+let displayEvidence=false, cardRef='task-b', cardPreview=false, cardRecipient=PAYOUT.recipient;
 const signed = [], hash = 'T'.repeat(44), blockHash = 'B'.repeat(44);
+const paidHash='RaXRoBEcCSMoQcas4P8Yu46jp2hZVrJs6CPNuHALF6R', paidReceipt='DcwQrmzbh9WRaJ71sWPBxgYbvP19dyPQ8mCuDU9kmdy';
 const p = () => ({id:1,proposer:PAYOUT.creator,description:payoutDescription,kind:transferKind(),status:'InProgress',votes:{},last_actions_log:[]});
 const outcome = tx => {
  const params = tx.actions[0].params, call = {method_name:params.methodName,args:btoa(JSON.stringify(params.args)),gas:params.gas,deposit:'0'};
@@ -64,7 +67,9 @@ window.fetch = async (url, options={}) => {
  if(mode==='offline')throw Error('offline');
  const {method,params} = JSON.parse(options.body); let result;
  if(method==='status')result={chain_id:'testnet'};
- else if(method==='block')result={header:{hash:blockHash},chunks:[]};
+ else if(method==='block')result={header:{hash:blockHash},chunks:!params.finality&&displayEvidence?[{chunk_hash:'synthetic-display-chunk'}]:[]};
+ else if(method==='chunk'&&displayEvidence)result={header:{shard_id:0},receipts:transaction.receipts.filter(r=>r.receipt_id===paidReceipt)};
+ else if(method==='EXPERIMENTAL_receipt_to_tx'&&displayEvidence)result={transaction_hash:paidHash,sender_account_id:'yawrd.testnet'};
  else if(method==='EXPERIMENTAL_tx_status')result=transaction;
  else if(method==='query'){
   if(params.block_id!==blockHash)throw Error('unfinalized view');
@@ -84,10 +89,28 @@ function app(next=actor,walletAccount=next){
   else {proposals[0].votes[tx.signerId]='Approve';if(Object.keys(proposals[0].votes).length===2)proposals[0].status='Approved';}
   transaction=outcome(tx);return {transaction:{hash}};
  }};
- root.render(React.createElement(RewardPayoutProvider,{key:++mount},React.createElement('div',{id:'identity'},React.createElement(RewardPayoutIdentity)),React.createElement(RewardPayoutWorkspace,{accountId:actor,wallet})));
+ const contribution = actor&&!PAYOUT.stewards.includes(actor)?React.createElement(ContributionExperience,{
+  state:{accountId:actor,role:'participant',tasks:[{ref:cardRef,title:cardRef==='task-b'?'Task B':'Task A',prUrl:cardRef==='task-b'?PAYOUT.prUrl:'https://github.com/vandigital/yawrd-build-progress/pull/2',historicalNote:'Synthetic accepted contribution',recipientAccountId:cardRecipient,
+   request:{actorAccountId:actor,recipientAccountId:cardRecipient,description:'Synthetic recorded contribution',recordedAt:'2026-11-07T00:00:00.000Z'},
+   acknowledgement:{actorAccountId:PAYOUT.creator,recordedAt:'2026-11-07T00:00:00.000Z',historicalAcceptedOn:null,historicalAcceptedAt:null,evidence:'Synthetic founder acknowledgement'}}]},preview:cardPreview,
+  onSubmit:async()=>{throw Error('Submissions disabled in display test')},onAcknowledge:async()=>{throw Error('Acknowledgements disabled in display test')}
+ }):null;
+ root.render(React.createElement(RewardPayoutProvider,{key:++mount},React.createElement('div',{id:'identity'},React.createElement(RewardPayoutIdentity)),React.createElement(RewardPayoutWorkspace,{accountId:actor,wallet}),contribution));
 }
 window.ux={signed,app,reset(){proposals=[];transaction=null;mode='normal';localStorage.clear();history.replaceState({},'', '/');app(PAYOUT.creator)},unknown(){mode='unknown'},landed(){mode='normal';proposals=[p()]},offline(){mode='offline'},approved(){mode='normal';proposals=[{...p(),status:'Approved',votes:{'yawrd1.testnet':'Approve','yawrd.testnet':'Approve'}}];transaction=null;localStorage.clear();app()},redirect(){mode='normal';proposals=[p()];const tx=signed[signed.length-1];transaction=outcome(tx);history.replaceState({},'', '?transactionHashes='+hash);app()}};
 Object.assign(window.ux,{
+ paidDisplay(account=null,ref='task-b',preview=false,recipient=PAYOUT.recipient){
+  displayEvidence=true;cardRef=ref;cardPreview=preview;cardRecipient=recipient;mode='normal';localStorage.clear();history.replaceState({},'', '/');
+  proposals=[{...p(),status:'Approved',votes:{'yawrd1.testnet':'Approve','yawrd.testnet':'Approve'},last_actions_log:[{block_height:'100'}]}];
+  transaction=outcome(payoutTransaction('approve','yawrd.testnet',p()));transaction.transaction.hash=paidHash;transaction.transaction_outcome.id=paidHash;
+  transaction.receipts.find(r=>r.receipt_id==='transfer').receipt_id=paidReceipt;
+  transaction.receipts_outcome.find(r=>r.id==='transfer').id=paidReceipt;
+  transaction.receipts_outcome.find(r=>r.id==='call').outcome.receipt_ids=[paidReceipt];app(account);
+ },
+ unverifiedDisplay(status='Approved'){
+  displayEvidence=false;cardRef='task-b';cardPreview=false;cardRecipient=PAYOUT.recipient;mode='normal';localStorage.clear();
+  proposals=[{...p(),status,votes:{'yawrd1.testnet':'Approve','yawrd.testnet':'Approve'}}];transaction=null;app(PAYOUT.recipient);
+ },
  approvalReady(){proposals=[p()];transaction=null;mode='normal';localStorage.clear();localStorage.setItem('unrelated-synthetic-session','preserve');history.replaceState({},'', '/');app(PAYOUT.creator)},
  stallApproval(){mode='stall-approval';finishApproval=undefined},approvalHeld(){return !!finishApproval},closeApproval(){mode='normal';finishApproval()},
  restoreApproval(kind){
@@ -239,6 +262,40 @@ window.pageSentinel='same-document';app();
       assert.equal(await evaluate('!!' + button('Approve Payout Proposal in Meteor')), false);
       assert.equal(await evaluate('JSON.parse(window.ux.attempt()).phase'), 'confirmed');
       assert.equal(await evaluate('window.ux.signed.length'), 5);
+    });
+    await t.test('public Project Identity retains Paid, proposal and approvals and links the verified transfer receipt without wallet storage', async () => {
+      await evaluate('window.ux.paidDisplay()');
+      await waitFor('document.getElementById("identity").textContent.includes("Reward Payout status: Paid")');
+      const expected='https://testnet.nearblocks.io/txns/RaXRoBEcCSMoQcas4P8Yu46jp2hZVrJs6CPNuHALF6R/execution#DcwQrmzbh9WRaJ71sWPBxgYbvP19dyPQ8mCuDU9kmdy';
+      assert.equal(await evaluate('document.getElementById("identity").textContent.includes("#1 · 2/2 approvals")'),true);
+      assert.equal(await evaluate('[...document.querySelectorAll("#identity a")].find(a=>a.textContent.startsWith("View Payout Transfer")).href'),expected);
+      assert.equal(await evaluate('document.querySelector("#identity a").href'),'https://testnet.nearblocks.io/txns/RaXRoBEcCSMoQcas4P8Yu46jp2hZVrJs6CPNuHALF6R');
+      assert.equal(await evaluate('window.ux.attempt()'),null);
+      assert.equal(await evaluate('document.querySelector("[aria-label=\\"Task B reward payment\\"]")'),null);
+    });
+    await t.test('the approved recipient sees the compact paid confirmation and receipt link inside Task B', async () => {
+      await evaluate('window.ux.paidDisplay("keelbase1.testnet")');
+      await waitFor('document.querySelector("[aria-label=\\"Task B reward payment\\"]")?.textContent.includes("Reward Paid — 1 NEAR Testnet")');
+      assert.equal(await evaluate('document.querySelector("#contributions [aria-labelledby=\\"task-b-title\\"] [aria-label=\\"Task B reward payment\\"]").textContent.includes("keelbase1.testnet")'),true);
+      assert.equal(await evaluate('document.querySelector("[aria-label=\\"Task B reward payment\\"] a").href'),'https://testnet.nearblocks.io/txns/RaXRoBEcCSMoQcas4P8Yu46jp2hZVrJs6CPNuHALF6R/execution#DcwQrmzbh9WRaJ71sWPBxgYbvP19dyPQ8mCuDU9kmdy');
+      assert.equal(await evaluate('window.ux.attempt()'),null);assert.equal(await evaluate('window.ux.signed.length'),5);
+    });
+    await t.test('unrelated wallets, Task A, receiving-account mismatches and illustrative previews never show the recipient payout confirmation', async () => {
+      for(const args of [['outsider.testnet'],['keelbase1.testnet','task-a'],['keelbase1.testnet','task-b',false,'other.testnet'],['keelbase1.testnet','task-b',true]]){
+        await evaluate('window.ux.paidDisplay(...'+JSON.stringify(args)+')');
+        await waitFor('document.getElementById("identity").textContent.includes("Reward Payout status: Paid")');
+        assert.equal(await evaluate('!!document.querySelector("[aria-label=\\"Task B reward payment\\"]")'),false);
+      }
+    });
+    await t.test('2/2 approvals without successful receipt evidence and failed executions never show either new payout display', async () => {
+      for(const status of ['Approved','Failed']){
+        await evaluate('window.ux.unverifiedDisplay('+JSON.stringify(status)+')');
+        await waitFor('document.getElementById("identity").textContent.includes("#1 · 2/2 approvals")');
+        assert.equal(await evaluate('document.getElementById("identity").textContent.includes("status: Paid")'),false);
+        assert.equal(await evaluate('!!document.querySelector("[aria-label=\\"Task B reward payment\\"]")'),false);
+        assert.equal(await evaluate('[...document.querySelectorAll("#identity a")].some(a=>a.textContent.startsWith("View Payout Transfer"))'),false);
+      }
+      assert.equal(await evaluate('window.ux.signed.length'),5);
     });
     assert.deepEqual(blocked, []);
   } finally {

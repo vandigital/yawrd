@@ -3,13 +3,18 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createTestnetRpc } from '../../src/creation-integration';
 import { PAYOUT, PayoutChain, PayoutFlow, initialPayoutState, approvalCount, payoutStatus, validHash,
-  type PayoutContext, type PayoutState, type PayoutEvidence } from '../../src/rewards/payout';
+  type PayoutContext, type PayoutState, type PayoutEvidence, type PayoutSnapshot } from '../../src/rewards/payout';
+import type { ContributionTask } from '../../src/contributions/types';
 import type { useTestnetWallet } from '../use-testnet-wallet';
 import { projectButton } from './project-wallet-controls';
 
 const State = createContext<{ state: PayoutState; flow: PayoutFlow | null }>({ state: initialPayoutState, flow: null });
 const link = 'break-all text-[#a9f1e9] underline underline-offset-4';
 const transactionLink = (hash: string) => `https://testnet.nearblocks.io/txns/${encodeURIComponent(hash)}`;
+export function verifiedPayoutTransferLink(snapshot: PayoutSnapshot | null): string | null {
+  if (payoutStatus(snapshot) !== 'Paid' || !snapshot?.execution || !snapshot.transferReceipt) return null;
+  return `${transactionLink(snapshot.execution.hash)}/execution#${encodeURIComponent(snapshot.transferReceipt)}`;
+}
 
 export function RewardPayoutProvider({ children }: { children: ReactNode }) {
   const [value, setValue] = useState<{ state: PayoutState; flow: PayoutFlow | null }>({ state: initialPayoutState, flow: null });
@@ -39,12 +44,27 @@ export function RewardPayoutProvider({ children }: { children: ReactNode }) {
 /** Reuses the allocation entry in Project Identity; no additional reward card. */
 export function RewardPayoutIdentity() {
   const { state } = useContext(State);
+  const transferLink = verifiedPayoutTransferLink(state.snapshot);
   return <>
     <p className="mt-2">Reward Payout status: {state.error && !state.snapshot ? 'Unverified — refresh payout status' : payoutStatus(state.snapshot)}</p>
     <p className="mt-2">Payout Proposal: {state.snapshot?.proposal ? `#${state.snapshot.proposal.id} · ${approvalCount(state.snapshot.proposal)}/2 approvals` : state.snapshot && !state.snapshot.conflicts.length ? 'Not created' : 'Unverified'}</p>
     <p className="mt-2 text-[#b4cccb]">Two different Stewards must approve it before payment. This allocation is not payment approval.</p>
     {state.snapshot?.execution && <a className={link} href={transactionLink(state.snapshot.execution.hash)}>Verified final approval transaction · {state.snapshot.execution.hash} ↗</a>}
+    {transferLink && <p className="mt-2"><a className={link} href={transferLink} target="_blank" rel="noopener noreferrer">View Payout Transfer ↗</a></p>}
   </>;
+}
+
+/** Only the authenticated assigned recipient's fixed Task B card uses this. */
+export function RecipientRewardPaid({ accountId, task }: { accountId: string; task: ContributionTask }) {
+  const { state } = useContext(State);
+  const transferLink = verifiedPayoutTransferLink(state.snapshot);
+  if (!transferLink || accountId !== PAYOUT.recipient || task.ref !== PAYOUT.taskRef
+    || task.prUrl !== PAYOUT.prUrl || task.recipientAccountId !== PAYOUT.recipient) return null;
+  return <div role="status" aria-label="Task B reward payment" className="mt-4 space-y-1 rounded-xl border border-[#79ada3]/40 bg-[#3d8c8a]/10 p-4 text-sm leading-6 text-[#e7f2ed]">
+    <p className="font-medium">Reward Paid — 1 NEAR Testnet</p>
+    <p>Recipient wallet · <span className="break-all font-mono">{PAYOUT.recipient}</span></p>
+    <a className={link} href={transferLink} target="_blank" rel="noopener noreferrer">View your payout ↗</a>
+  </div>;
 }
 
 export async function requestPayoutContext(): Promise<PayoutContext> {

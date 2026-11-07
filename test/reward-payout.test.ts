@@ -8,7 +8,7 @@ import { payoutContext, payoutContextRequest } from '../src/rewards/context.ts';
 import { SESSION_COOKIE } from '../src/participants/auth.ts';
 import type { Rpc, AttemptStore } from '../src/creation-integration.ts';
 import { createTestnetRpc } from '../src/creation-integration.ts';
-import { RewardPayoutWorkspace } from '../app/components/reward-payout.tsx';
+import { RewardPayoutWorkspace, verifiedPayoutTransferLink } from '../app/components/reward-payout.tsx';
 import { PersistedYawrdPresentation } from '../app/components/persisted-yawrd.tsx';
 import { GENESIS_YAW_001 as g } from '../src/genesis/yaw-001.ts';
 import { TestnetWalletSession } from '../app/wallet-session.ts';
@@ -284,6 +284,21 @@ test('redirect hash and manually supplied failed transaction evidence reconcile 
   assert.equal(resumed.state.attempt!.phase, 'failed');
 });
 const approved = () => proposal({ status: 'Approved', votes: { [PAYOUT.creator]: 'Approve', 'yawrd.testnet': 'Approve' } });
+test('verified payout display links the execution transaction to its receipt without treating the receipt as a transaction hash', () => {
+  const hash = 'RaXRoBEcCSMoQcas4P8Yu46jp2hZVrJs6CPNuHALF6R';
+  const receipt = 'DcwQrmzbh9WRaJ71sWPBxgYbvP19dyPQ8mCuDU9kmdy';
+  const snapshot = { proposal: approved(), conflicts: [], blockHash, settlement: 'paid' as const,
+    execution: { hash, signer: 'yawrd.testnet' }, transferReceipt: receipt };
+  const href = verifiedPayoutTransferLink(snapshot)!;
+  assert.equal(href, `https://testnet.nearblocks.io/txns/${hash}/execution#${receipt}`);
+  assert.equal(new URL(href).hash, '#' + receipt);
+  assert.doesNotMatch(new URL(href).pathname, new RegExp(receipt));
+  assert.equal(verifiedPayoutTransferLink(null), null);
+  for (const settlement of ['unverified', 'pending', 'failed'] as const) assert.equal(verifiedPayoutTransferLink({ ...snapshot, settlement }), null);
+  assert.equal(verifiedPayoutTransferLink({ ...snapshot, transferReceipt: undefined }), null);
+  assert.equal(verifiedPayoutTransferLink({ ...snapshot, execution: undefined }), null);
+  assert.equal(verifiedPayoutTransferLink({ ...snapshot, conflicts: [2] }), null);
+});
 test('approved DAO status alone never means Paid; evidence recovery across browsers verifies real causal transfer', async () => {
   const p = approved(), f = fixture([p]);
   assert.match(payoutStatus(await f.chain.read()), /settlement unverified/);
