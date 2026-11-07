@@ -4,13 +4,16 @@ import { YawrdAvatar, YawrdBrandIcon } from './buoy-mark';
 import { ParticipantPanel } from './participant-panel';
 import { GENESIS_YAW_001 } from '../../src/genesis/yaw-001';
 import { TASK_B_REWARD } from '../../src/genesis/task-b-reward';
+import { RewardPayoutIdentity, RewardPayoutProvider } from './reward-payout';
 
 const publicLinkClass = 'rounded-sm text-[#c2dedd] underline decoration-[#5b918c] underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c2dedd]';
 
 export function PersistedYawrdPresentation({ project, view, contributionsActive = false }: { project: PersistedProject; view: ParticipantView; contributionsActive?: boolean }) {
-  return <ParticipantPanel projectId={project.id} initial={view} contributionsActive={contributionsActive}>
+  const presentation = <ParticipantPanel projectId={project.id} initial={view} contributionsActive={contributionsActive}>
     <PersistedYawrdContent project={project} />
   </ParticipantPanel>;
+  return project.id === GENESIS_YAW_001.id && project.network === 'testnet' && project.creatorAccountId === GENESIS_YAW_001.creatorAccountId
+    ? <RewardPayoutProvider>{presentation}</RewardPayoutProvider> : presentation;
 }
 
 /** Shared presentation for the persisted project and focused M08 rendering checks. */
@@ -62,7 +65,7 @@ export function PersistedYawrdContent({ project }: { project: PersistedProject }
               <div><dt className="text-[#91b5aa]">Project account · DAO</dt><dd className="mt-1 break-all font-mono"><a className={publicLinkClass} href={`https://testnet.nearblocks.io/address/${genesis.daoAccountId}`}>{genesis.daoAccountId}</a></dd></div>
               <div><dt className="text-[#91b5aa]">Deployment factory</dt><dd className="mt-1 break-all font-mono"><a className={publicLinkClass} href={`https://testnet.nearblocks.io/address/${genesis.factoryAccountId}`}>{genesis.factoryAccountId}</a></dd></div>
               <div><dt className="text-[#91b5aa]">Network</dt><dd className="text-[#c2dedd]">NEAR Testnet · Test tokens</dd></div>
-              <div><dt className="text-[#91b5aa]">Task B · Conditional reward</dt><dd className="mt-1 text-[#e7f2ed]"><strong>{TASK_B_REWARD.amountLabel}</strong><p className="mt-2">{TASK_B_REWARD.status}</p><p className="mt-2 text-[#b4cccb]">A Steward must propose this reward. Two different Stewards must approve it before payment. This allocation is not payment approval.</p></dd></div>
+              <div><dt className="text-[#91b5aa]">Task B · Conditional reward</dt><dd className="mt-1 text-[#e7f2ed]"><strong>{TASK_B_REWARD.amountLabel}</strong><RewardPayoutIdentity /></dd></div>
             </dl>
             <p className="mt-5 border-t border-white/10 pt-4 text-xs leading-6 text-[#a8c0b8]">Creator and project account identities are backed by the accepted Genesis deployment evidence. Account links open the public Testnet explorer.</p>
           </section>

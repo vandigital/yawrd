@@ -1,5 +1,6 @@
 import type { Account, NearConnector, SignMessageParams } from "@hot-labs/near-connect";
 import type { CreationTransaction } from "../src/creation-integration.ts";
+import { payoutTransaction, payoutDescription, transferKind, type PayoutTransaction } from '../src/rewards/payout.ts';
 
 const METEOR_WALLET_ID = "meteor-wallet";
 
@@ -67,6 +68,36 @@ export class TestnetWalletSession {
       throw new Error("Wallet account or network changed. Review again.");
     }
     return wallet.signAndSendTransaction(transaction);
+  }
+
+  async signPayout(transaction: PayoutTransaction) {
+    const changed = () => !this.active || this.connector.network !== 'testnet' || transaction.network !== 'testnet' || this.state.accountId !== transaction.signerId;
+    if (changed() || this.state.busy || !this.state.ready) throw Object.assign(new Error('Wallet account or network changed. Review again.'), { code: 'PAYOUT_NOT_REQUESTED' });
+    const revision = this.revision;
+    let requested = false;
+    this.update({ busy: true });
+    try {
+      // Rebuild the fixed payload; this adapter never authorizes arbitrary calls.
+      const params = transaction.actions[0]?.params;
+      const expected = params?.methodName === 'add_proposal' ? payoutTransaction('create', transaction.signerId)
+        : payoutTransaction('approve', transaction.signerId, { id: params?.args.id as number, proposer: 'yawrd1.testnet',
+          description: payoutDescription, kind: transferKind(), status: 'InProgress', votes: {} });
+      if (JSON.stringify(transaction) !== JSON.stringify(expected)) throw new Error('Payout terms changed. Review again.');
+      const { wallet } = await this.connector.getConnectedWallet();
+      const accounts = await wallet.getAccounts({ network: 'testnet' });
+      if (changed() || revision !== this.revision || wallet !== this.meteorWallet || !this.meteorIsAvailable() || !accounts.some(a => a.accountId === transaction.signerId)) throw new Error('Wallet account or network changed. Review again.');
+      if (typeof wallet.signAndSendTransaction !== 'function') throw new Error('Meteor cannot authorize transactions.');
+      // The outcome can still be on-chain if an account changes after this call.
+      // Return it for receipt reconciliation rather than reporting a false failure.
+      requested = true;
+      return await wallet.signAndSendTransaction(transaction);
+    } catch (error) {
+      if (!requested) throw Object.assign(new Error(error instanceof Error ? error.message : 'Wallet authorization could not be prepared.'), { code: 'PAYOUT_NOT_REQUESTED' });
+      throw error;
+    } finally {
+      this.update({ busy: false });
+      if (this.refreshAfterBusy) { this.refreshAfterBusy = false; void this.refresh(); }
+    }
   }
 
   private update(change: Partial<WalletState>) {

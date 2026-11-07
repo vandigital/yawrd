@@ -65,7 +65,7 @@ export class RpcError extends Error {
 /** Public read-only RPC only; no transaction broadcast method is exposed. */
 export function createTestnetRpc(fetcher: typeof fetch = fetch): Rpc {
   return async (method, params) => {
-    if (!["status", "query", "EXPERIMENTAL_tx_status"].includes(method)) throw new Error("Read-only RPC method required.");
+    if (!["status", "query", "EXPERIMENTAL_tx_status", "block", "chunk", "EXPERIMENTAL_receipt_to_tx"].includes(method)) throw new Error("Read-only RPC method required.");
     const response = await fetcher("https://rpc.testnet.near.org", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: "yawrd-creation", method, params }), signal: AbortSignal.timeout(20000),

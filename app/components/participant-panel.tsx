@@ -6,6 +6,7 @@ import { useTestnetWallet } from '../use-testnet-wallet';
 import type { IdentityChallenge } from '../../src/identity/types';
 import type { ParticipantView } from '../../src/participants/types';
 import { ContributionWorkspace } from './contribution-workspace';
+import { RewardPayoutWorkspace } from './reward-payout';
 
 const button = projectButton;
 const messages: Record<string, string> = {
@@ -137,6 +138,7 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
     </section> : <p className="border-t border-[#377b78]/40 pt-4 text-xs leading-6 text-[#b4cccb]">Participant information · The creator has not added participant information yet.</p>)}
     {busy && !walletAction && <p role="status" className="text-xs text-[#c2dedd]">Saving or verifying… Please wait.</p>}
   </section>
+  {projectId === 'yaw-001' && <RewardPayoutWorkspace accountId={view.accountId} wallet={wallet} refreshVersion={contributionRefreshVersion} />}
   {projectId === 'yaw-001' && view.accountId && (view.role === 'creator' || view.role === 'participant') && <ContributionWorkspace key={view.accountId} accountId={view.accountId} active={contributionsActive} wallet={wallet} refreshVersion={contributionRefreshVersion} />}
   </>;
 }

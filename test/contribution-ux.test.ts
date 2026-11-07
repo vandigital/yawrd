@@ -76,7 +76,8 @@ test('existing public Project Identity displays the conditional Testnet allocati
   const identity = html.slice(html.indexOf('id="genesis-identity-title"'), html.indexOf('id="genesis-source-title"'));
   assert.match(identity, /Task B · Conditional reward/);
   assert.match(identity, /1 NEAR on Testnet/);
-  assert.match(identity, /Allocated — not yet proposed/);
+  assert.match(identity, /Reward Payout status: Allocated — chain status not yet verified/);
+  assert.match(identity, /Payout Proposal: Unverified/);
   assert.match(identity, /Two different Stewards must approve it before payment/);
   assert.match(identity, /This allocation is not payment approval/);
   assert.equal((identity.match(/Task B · Conditional reward/g) ?? []).length, 1);

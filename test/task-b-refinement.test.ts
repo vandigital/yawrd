@@ -51,12 +51,12 @@ test('public Project Identity shows allocation without login or publishing recip
   const html = renderToStaticMarkup(createElement(PersistedYawrdPresentation, { project, view }));
   const identity = html.slice(html.indexOf('id="genesis-identity-title"'), html.indexOf('id="genesis-source-title"'));
   assert.match(identity, /Task B · Conditional reward|1 NEAR on Testnet/);
-  assert.match(identity, /Allocated — not yet proposed/);
+  assert.match(identity, /Reward Payout status: Allocated — chain status not yet verified/);
   assert.match(identity, /Two different Stewards/);
   assert.doesNotMatch(html, /keelbase1|keelbase\.testnet|hermes-yaw001|Reward amounts and terms remain unapproved|Paid<|>Approved</);
   assert.match(html, /Task A is accepted with no payout allocated/);
   const other = renderToStaticMarkup(createElement(PersistedYawrdContent, { project: { ...project, id:'other-project' } }));
-  assert.doesNotMatch(other, /Allocated — not yet proposed/);
+  assert.doesNotMatch(other, /Reward Payout status/);
 });
 test('Task B preview prefills immutable PR/recipient, separates login/signing and creates no wallet action', () => {
   const state = contributionExample('submit');
