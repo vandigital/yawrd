@@ -15,8 +15,10 @@ export function RewardPayoutProvider({ children }: { children: ReactNode }) {
   const [value, setValue] = useState<{ state: PayoutState; flow: PayoutFlow | null }>({ state: initialPayoutState, flow: null });
   useEffect(() => {
     let active = true;
+    // Payout reads use the browser-compatible public Testnet endpoint.
+    const rpc = createTestnetRpc((_url, options) => fetch('https://test.rpc.fastnear.com', options));
     // Store public attempt metadata before requesting wallet authorization.
-    const flow = new PayoutFlow(new PayoutChain(createTestnetRpc()), {
+    const flow = new PayoutFlow(new PayoutChain(rpc), {
       getItem: key => window.localStorage.getItem(key), setItem: (key, v) => window.localStorage.setItem(key, v),
     }, state => { if (active) setValue({ state, flow }); });
     setValue({ state: flow.state, flow });

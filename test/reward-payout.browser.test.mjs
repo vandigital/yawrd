@@ -60,7 +60,7 @@ window.fetch = async (url, options={}) => {
   if(options.method!=='GET'||options.credentials!=='same-origin'||options.cache!=='no-store')throw Error('unsafe context read');
   return Response.json({accountId:actor,acknowledged:true,acknowledgedAt:'2026-11-07T00:00:00.000Z'});
  }
- if(url!=='https://rpc.testnet.near.org')throw Error('Unexpected external URL');
+ if(url!=='https://test.rpc.fastnear.com')throw Error('Unexpected external URL');
  if(mode==='offline')throw Error('offline');
  const {method,params} = JSON.parse(options.body); let result;
  if(method==='status')result={chain_id:'testnet'};
