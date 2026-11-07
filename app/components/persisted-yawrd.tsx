@@ -3,12 +3,20 @@ import { ProjectCover, ProjectHeading } from './project-presentation';
 import { YawrdAvatar, YawrdBrandIcon } from './buoy-mark';
 import { ParticipantPanel } from './participant-panel';
 import { GENESIS_YAW_001 } from '../../src/genesis/yaw-001';
+import { TASK_B_REWARD } from '../../src/genesis/task-b-reward';
 
 const publicLinkClass = 'rounded-sm text-[#c2dedd] underline decoration-[#5b918c] underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c2dedd]';
 
-export function PersistedYawrdPresentation({ project, view }: { project: PersistedProject; view: ParticipantView }) {
+export function PersistedYawrdPresentation({ project, view, contributionsActive = false }: { project: PersistedProject; view: ParticipantView; contributionsActive?: boolean }) {
+  return <ParticipantPanel projectId={project.id} initial={view} contributionsActive={contributionsActive}>
+    <PersistedYawrdContent project={project} />
+  </ParticipantPanel>;
+}
+
+/** Shared presentation for the persisted project and focused M08 rendering checks. */
+export function PersistedYawrdContent({ project }: { project: PersistedProject }) {
   const genesis = project.id === GENESIS_YAW_001.id && project.network === GENESIS_YAW_001.network && project.creatorAccountId === GENESIS_YAW_001.creatorAccountId ? GENESIS_YAW_001 : null;
-  return <ParticipantPanel projectId={project.id} initial={view}>
+  return <>
     {genesis && <nav aria-label="Project navigation" className="mb-6 flex flex-wrap gap-6 text-xs text-[#c2dedd]">
       <a href="/#discover" className={publicLinkClass}>← Discover Yawrds</a>
       <a href="/docs" className={publicLinkClass}>Yawrd docs</a>
@@ -41,7 +49,7 @@ export function PersistedYawrdPresentation({ project, view }: { project: Persist
           </section>}
           <section><h2 className="text-xl font-medium tracking-tight text-white">{genesis ? "What we're building" : 'What we hope to build'}</h2><ul className="mt-4 list-disc space-y-3 pl-5 text-sm leading-7 text-[#bed1c9]">{project.objectives.map((o, i) => <li key={i}>{o}</li>)}</ul></section>
           <section><h2 className="text-xl font-medium tracking-tight text-white">Taking part</h2><p className="mt-3 text-sm leading-7 text-[#bed1c9]">{project.participation}</p></section>
-          <section><h2 className="text-xl font-medium tracking-tight text-white">Contributions &amp; rewards</h2><p className="mt-3 text-sm leading-7 text-[#bed1c9]">{project.rewards}</p></section>
+          <section><h2 className="text-xl font-medium tracking-tight text-white">Contributions &amp; rewards</h2><p className="mt-3 text-sm leading-7 text-[#bed1c9]">{genesis ? 'Task B has a conditional allocation of 1 NEAR on Testnet. A Steward must propose the reward and two distinct Stewards must approve it before payment. Task A is accepted with no payout allocated by this decision. Contribution submission or acknowledgement does not approve payment.' : project.rewards}</p></section>
         </div>
         {genesis ? <aside aria-label="Project identity and public evidence" className="min-w-0 space-y-5">
           <section aria-labelledby="genesis-identity-title" className="rounded-2xl border border-white/10 bg-[#001b1d] p-5">
@@ -54,6 +62,7 @@ export function PersistedYawrdPresentation({ project, view }: { project: Persist
               <div><dt className="text-[#91b5aa]">Project account · DAO</dt><dd className="mt-1 break-all font-mono"><a className={publicLinkClass} href={`https://testnet.nearblocks.io/address/${genesis.daoAccountId}`}>{genesis.daoAccountId}</a></dd></div>
               <div><dt className="text-[#91b5aa]">Deployment factory</dt><dd className="mt-1 break-all font-mono"><a className={publicLinkClass} href={`https://testnet.nearblocks.io/address/${genesis.factoryAccountId}`}>{genesis.factoryAccountId}</a></dd></div>
               <div><dt className="text-[#91b5aa]">Network</dt><dd className="text-[#c2dedd]">NEAR Testnet · Test tokens</dd></div>
+              <div><dt className="text-[#91b5aa]">Task B · Conditional reward</dt><dd className="mt-1 text-[#e7f2ed]"><strong>{TASK_B_REWARD.amountLabel}</strong><p className="mt-2">{TASK_B_REWARD.status}</p><p className="mt-2 text-[#b4cccb]">A Steward must propose this reward. Two different Stewards must approve it before payment. This allocation is not payment approval.</p></dd></div>
             </dl>
             <p className="mt-5 border-t border-white/10 pt-4 text-xs leading-6 text-[#a8c0b8]">Creator and project account identities are backed by the accepted Genesis deployment evidence. Account links open the public Testnet explorer.</p>
           </section>
@@ -77,5 +86,5 @@ export function PersistedYawrdPresentation({ project, view }: { project: Persist
       </div>
     </div>
   </article>
-  </ParticipantPanel>;
+  </>;
 }

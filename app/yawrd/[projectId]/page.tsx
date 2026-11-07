@@ -9,6 +9,7 @@ import { SESSION_COOKIE, sessionHash } from "../../../src/participants/auth";
 import { PersistedYawrdPresentation } from "../../components/persisted-yawrd";
 import { BuoyMark, YawrdBrandIcon } from "../../components/buoy-mark";
 import createStyles from "../../create/create.module.css";
+import { verifiedContributionActivation, contributionsActive } from "../../../src/contributions/policy";
 
 type Props = { params: Promise<{ projectId: string }> };
 
@@ -36,6 +37,8 @@ export default async function PublicYawrdPage({ params }: Props) {
     if (!unavailable && !persisted) notFound();
   }
   const genesis = projectId === "yaw-001";
+  const contributionWorkflowActive = genesis && persisted !== null && view !== null
+    && contributionsActive(await verifiedContributionActivation(database));
   return <main id="project-content" className={genesis ? createStyles.page : "min-h-screen bg-[#0d1716] px-5 pb-16 text-[#e9f1ee] sm:px-8"}>
     <div className={genesis ? createStyles.container : "mx-auto max-w-[1000px]"}>
       {(!persisted || !view) && <header className="mb-8 flex min-h-20 flex-wrap items-center justify-between gap-3 border-b border-white/[0.09] py-4 sm:mb-12 sm:min-h-24">
@@ -48,7 +51,7 @@ export default async function PublicYawrdPage({ params }: Props) {
       {project ? <PublicYawrdPresentation project={project} /> : unavailable ? <section role="alert" className="rounded-2xl border border-[#5b918c]/40 bg-[#162521] p-8">
         <h1 className="text-2xl font-medium">Project temporarily unavailable</h1>
         <p className="mt-3 text-sm leading-7 text-[#bed1c9]">Yawrd could not load this project safely. Please try again later.</p>
-      </section> : persisted && view ? <PersistedYawrdPresentation project={persisted} view={view} /> : null}
+      </section> : persisted && view ? <PersistedYawrdPresentation project={persisted} view={view} contributionsActive={contributionWorkflowActive} /> : null}
     </div>
   </main>;
 }

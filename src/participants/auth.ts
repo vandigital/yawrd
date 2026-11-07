@@ -16,7 +16,7 @@ export function signInMessage(c: Pick<IdentityChallenge, 'accountId' | 'origin' 
   return ['Sign in to Yawrd for one hour.', 'This off-chain message costs no gas, submits no transaction and grants no spending, GitHub or Project Rules permissions.',
     `Account: ${c.accountId}`, 'Network: testnet', `Origin: ${c.origin}`, `Issued at: ${new Date(c.issuedAt).toISOString()}`, `Expires at: ${new Date(c.expiresAt).toISOString()}`].join('\n');
 }
-function storedChallenge(r: Row): IdentityChallenge {
+export function storedChallenge(r: Row): IdentityChallenge {
   // Neon parses timestamptz into Date objects. String(Date) loses milliseconds
   // and changes the reconstructed signed message; preserve the exact instant.
   const time = (value: unknown) => value instanceof Date ? value.getTime() : new Date(String(value)).getTime();

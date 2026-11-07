@@ -1,0 +1,29 @@
+.workspace { margin-top: 2rem; padding: clamp(1rem, 3vw, 2rem); border: 1px solid #377b78; border-radius: 20px; background: linear-gradient(130deg, #002b2b, #001e20); color: #c2dedd; overflow-wrap: anywhere; }
+.workspace h2 { font-size: clamp(1.5rem, 3vw, 2rem); color: #e7f2ed; letter-spacing: -.035em; }
+.workspace h3 { font-size: 1.2rem; color: #e7f2ed; }
+.workspace h4 { font-weight: 600; color: #e7f2ed; }
+.workspace p { margin-top: .75rem; font-size: .9rem; line-height: 1.8; }
+.heading, .taskHeader { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.workspace .eyebrow { margin: 0 0 .3rem; color: #a9ccc5; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; }
+.badge { border: 1px solid #5b918c; border-radius: 99px; padding: .4rem .75rem; font-size: .7rem; line-height: 1.5; color: #d7eeeb; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin-top: 1.5rem; }
+.card { padding: clamp(1rem, 2vw, 1.5rem); background: #001b1d; border: 1px solid #377b78; border-radius: 16px; min-width: 0; }
+.evidence { display: block; margin-top: 1rem; color: #b1e1da; text-decoration: underline; text-underline-offset: 4px; font-size: .85rem; }
+.evidence span { display: block; margin-top: .25rem; font-size: .75rem; }
+.record { margin-top: 1.25rem; padding: 1rem; border: 1px solid #377b78; border-radius: 12px; background: #063233; }
+.workspace dl { margin-top: .75rem; display: grid; gap: .85rem; font-size: .8rem; line-height: 1.6; }
+.workspace dt { color: #a9ccc5; }
+.workspace dd { margin-top: .2rem; color: #e7f2ed; }
+.workspace form { display: grid; gap: 1rem; margin-top: 1.25rem; }
+.workspace label { display: block; font-size: .85rem; line-height: 1.7; color: #d0e4de; }
+.workspace textarea, .workspace input:not([type=checkbox]) { width: 100%; min-width: 0; margin-top: .5rem; padding: .85rem; border: 1px solid #5b918c; border-radius: 10px; background: #001416; color: #e7f2ed; font: inherit; }
+.workspace textarea { resize: vertical; }
+.workspace .check { display: flex; gap: .75rem; align-items: start; font-size: .8rem; }
+.check input { flex: 0 0 auto; margin-top: .35rem; width: 1rem; height: 1rem; accent-color: #8cd1c5; }
+.workspace button { justify-self: start; min-height: 44px; padding: .7rem 1rem; border: 1px solid #82b7af; border-radius: 10px; background: #123e3d; color: #e7f2ed; font-size: .85rem; font-weight: 600; cursor: pointer; }
+.workspace button:disabled { opacity: .55; cursor: default; }
+.workspace :is(button, a, input, textarea):focus-visible { outline: 2px solid #c2f4ea; outline-offset: 4px; }
+.workspace .small { color: #b4ceca; font-size: .75rem; line-height: 1.8; }
+.notice, .error { margin-top: 1rem; padding: 1rem; border-radius: 12px; border: 1px solid #6fa49c; background: #103c39; color: #dbede5; font-size: .85rem; line-height: 1.8; overflow-wrap: anywhere; }
+.error { border-color: #bb8e76; background: #3e2d27; color: #f5d7c5; }
+@media (min-width: 1000px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

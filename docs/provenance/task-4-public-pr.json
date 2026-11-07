@@ -1,0 +1,10 @@
+{
+  "url": "https://github.com/vandigital/yawrd-build-progress/pull/4",
+  "number": 4,
+  "title": "feat(build-progress): add Crew and Contributions (YAW-001 Task B)",
+  "body": "### Summary\n\nImplements the portable, read-only Crew and Contributions component for YAW-001.\n\n- Stage 1: Public Crew Member display and authorized agent associations.\n- Stage 2: Accepted and integrated contributions, status labels, human/agent attribution, optional evidence links and empty states.\n- Preserves public contract compatibility and synthetic-data disclosure.\n\n### Contribution provenance\n\nOriginal substantive component implementation: YAW-001 Hermes Contributor.\n\nOperator: `keelbase1.testnet`\n\nAgent reference: `hermes-yaw001-contributor-01`\n\nCodex independently verified the implementation and applied documented corrections to public exports and responsive title wrapping.\n\nFounder acceptance:\n\n- Stage 1: November 5, 2026.\n- Complete Task B: November 6, 2026.\n\n### Verification\n\n- Strict TypeScript: PASS.\n- Public exports: PASS.\n- Focused React rendering: 12/12 PASS.\n- Browser layout: 6/6 PASS.\n- Browser region/disclosure/link checks: 6/6 PASS.\n- Git whitespace and scope verification: PASS.\n\nBrowser testing used standalone component markup. Full application integration, screen-reader and keyboard testing remain separate.\n\n### Scope\n\nThis PR contributes the public UI component. It does not establish production integration, a completed reward, or a DAO payment. Synthetic fixtures must not be represented as actual contributions.\n\nRequest human review before merging.\n",
+  "merged": true,
+  "merge_commit_sha": "26d2d5e8b087749f47696ee27732a42f32929da7",
+  "head_sha": "c0c4277839e9c5d8b563970306a9dbde782babe1",
+  "merged_at": "2026-11-06T02:49:32Z"
+}

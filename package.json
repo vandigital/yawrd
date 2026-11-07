@@ -13,7 +13,8 @@
     "db:verify:runtime": "node scripts/verify-runtime.mjs",
     "db:seed:acceptance": "node scripts/seed-07b-acceptance.mjs",
     "test:acceptance:local": "node scripts/check-07b-acceptance.mjs",
-    "test:participants:live": "node --import ./scripts/load-migration-environment.mjs --import ./test/register-tsx.mjs --test --test-isolation=none test/participants-live.test.ts"
+    "test:participants:live": "node --import ./scripts/load-migration-environment.mjs --import ./test/register-tsx.mjs --test --test-isolation=none test/participants-live.test.ts",
+    "test:contributions": "node --import ./test/register-contributions.mjs --test --test-isolation=none --test-skip-pattern=\"inactive SQL\" test/contributions.test.ts test/contribution-signing.test.ts test/contribution-activation.test.ts test/contribution-production-activation.test.ts test/contribution-ux.test.ts test/task-b-refinement.test.ts"
   },
   "dependencies": {
     "@hot-labs/near-connect": "0.11.4",

@@ -5,6 +5,7 @@ import { ProjectHeader, ProjectWalletControls, projectButton } from './project-w
 import { useTestnetWallet } from '../use-testnet-wallet';
 import type { IdentityChallenge } from '../../src/identity/types';
 import type { ParticipantView } from '../../src/participants/types';
+import { ContributionWorkspace } from './contribution-workspace';
 
 const button = projectButton;
 const messages: Record<string, string> = {
@@ -21,7 +22,7 @@ async function request(url: string, data?: object) {
   return result;
 }
 
-export function ParticipantPanel({ projectId, initial, children }: { projectId: string; initial: ParticipantView; children?: ReactNode }) {
+export function ParticipantPanel({ projectId, initial, children, contributionsActive = false }: { projectId: string; initial: ParticipantView; children?: ReactNode; contributionsActive?: boolean }) {
   const wallet = useTestnetWallet();
   const [view, setView] = useState(initial);
   const [challenge, setChallenge] = useState<IdentityChallenge | null>(null);
@@ -31,6 +32,7 @@ export function ParticipantPanel({ projectId, initial, children }: { projectId: 
   const [walletAction, setWalletAction] = useState(false);
   const [introduction, setIntroduction] = useState('');
   const [consent, setConsent] = useState(false);
+  const [contributionRefreshVersion, setContributionRefreshVersion] = useState(0);
   const path = `/api/yawrd/${encodeURIComponent(projectId)}`;
   async function run(work: () => Promise<void>, inWallet = false) {
     if (lock.current) return;
@@ -39,7 +41,10 @@ export function ParticipantPanel({ projectId, initial, children }: { projectId: 
     catch (e) { setError(e instanceof Error ? e.message : 'The request could not complete. Please try again.'); }
     finally { lock.current = false; setBusy(false); }
   }
-  async function refresh() { setView(await request(`${path}/state`)); }
+  async function refresh() {
+    setView(await request(`${path}/state`));
+    setContributionRefreshVersion(version => version + 1);
+  }
   async function prepare() {
     setChallenge(null);
     const c = wallet.getContext();
@@ -132,5 +137,6 @@ export function ParticipantPanel({ projectId, initial, children }: { projectId: 
     </section> : <p className="border-t border-[#377b78]/40 pt-4 text-xs leading-6 text-[#b4cccb]">Participant information · The creator has not added participant information yet.</p>)}
     {busy && !walletAction && <p role="status" className="text-xs text-[#c2dedd]">Saving or verifying… Please wait.</p>}
   </section>
+  {projectId === 'yaw-001' && view.accountId && (view.role === 'creator' || view.role === 'participant') && <ContributionWorkspace key={view.accountId} accountId={view.accountId} active={contributionsActive} wallet={wallet} refreshVersion={contributionRefreshVersion} />}
   </>;
 }
