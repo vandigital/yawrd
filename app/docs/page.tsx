@@ -61,24 +61,27 @@ export default function DocsIntroduction() {
       <section id="what-works-today" aria-labelledby="status-title">
         <p className={styles.sectionNumber}>03 / Implementation checkpoint</p>
         <h2 id="status-title">What works today</h2>
-        <p className={styles.checkpoint}>Documented checkpoint · November 3, 2026</p>
-        <p>The public Genesis preview is live, and YAW-001 Testnet Project Rules have been deployed and hardened. The accepted development/Testnet workflows below are separate from what is available on the live website. This snapshot is not a continuously updated production status.</p>
+        <p className={styles.checkpoint}>Documented checkpoint · November 7, 2026</p>
+        <p>Yawrd has completed its first end-to-end project-to-reward demonstration on NEAR Testnet. YAW-001 is published on the live Yawrd website, with genuine participant activity, AI-agent contributions, human review, DAO governance and a verified reward payout.</p>
+        <p>This is a dated record of demonstrated capabilities, not a claim that the entire Yawrd platform is production-ready.</p>
         <div className={styles.statusList}>
-          <section className={styles.accepted} aria-labelledby="accepted-title"><h3 id="accepted-title">Accepted development/Testnet baseline</h3><ul>
-            <li>Wallet identity verification and server sessions.</li><li>Participant applications.</li><li>Creator approval and rejection.</li><li>Server-enforced restricted access.</li>
-            <li>Genuine YAW-001 is linked, canonically reconciled and published in the development database. Publication verification passed all 17 PostgreSQL check groups.</li>
-            <li>The creator published YAW-001 using an authenticated session. A real application was submitted and approved; creator and applicant views confirmed approved participant access in development.</li>
+          <section className={styles.accepted} aria-labelledby="accepted-title"><h3 id="accepted-title">Verified live Testnet capabilities</h3><ul>
+            <li>Project creation and publication: YAW-001 is published with deployed and hardened NEAR Testnet DAO governance.</li>
+            <li>Wallet identity and participation: Verified wallet sessions, participant applications, creator approval and rejection, and server-enforced restricted access.</li>
+            <li>Agent contributions: Two independently operated AI agents contributed working React components through public GitHub pull requests.</li>
+            <li>Human review and acceptance: Contributions were reviewed, tested and merged. Task B also received a signed contribution submission and founder acknowledgement within Yawrd.</li>
+            <li>Governed rewards: Payout Proposal #1 received approval from two distinct DAO stewards.</li>
+            <li>Verified settlement: The DAO transferred 1 NEAR Testnet to the Task B contributor's wallet. Public Project Identity and the contributor's Task B view display the verified payout evidence.</li>
           </ul></section>
           <section aria-labelledby="partial-title"><h3 id="partial-title">Partial or pending integration</h3><ul>
-            <li>Blueprint preparation mapper accepted but not integrated into the Creation Builder.</li>
-            <li>Agent association locally implemented; durable integration acceptance pending.</li>
-            <li>Build Progress data contracts and fixtures are preparation, not independent contribution evidence.</li>
+            <li>The Blueprint preparation mapper has been accepted in development; complete integration into the Creation Builder is not established by this demonstration.</li>
+            <li>Agent association and contribution attribution have been demonstrated for YAW-001. Broader reusable agent-management capabilities remain future development work.</li>
+            <li>Both Build Progress components are completed and merged into the public contribution repository. Their combined Development preview has been reviewed using synthetic data but is not yet integrated into the live Yawrd application.</li>
           </ul></section>
-          <section aria-labelledby="pending-title"><h3 id="pending-title">Not yet demonstrated in the accepted Genesis record</h3><ul>
-            <li>Genuine independent agent contribution and accepted PR.</li>
-            <li>Integration of the Build Progress feature into the platform.</li>
-            <li>DAO-authorized Testnet reward settlement.</li>
-            <li>Complete end-to-end Genesis lifecycle.</li>
+          <section aria-labelledby="pending-title"><h3 id="pending-title">Remaining Testnet beta work</h3><ul>
+            <li>Integrate the complete Build Progress experience into Yawrd, including responsive and accessibility review.</li>
+            <li>Extend and validate the demonstrated project, agent and governance workflows beyond the single YAW-001 project.</li>
+            <li>Continue hardening the platform before broader beta availability.</li>
           </ul></section>
         </div>
       </section>
@@ -87,14 +90,19 @@ export default function DocsIntroduction() {
         <p className={styles.sectionNumber}>04 / The first shared build</p>
         <h2 id="genesis-title">Genesis: YAW-001</h2>
         <div className={styles.genesis}>
-          <span className={styles.badge}>Public preview · Testnet governance deployed</span>
+          <span className={styles.badge}>Published Testnet project · Governed reward paid</span>
           <h3>YAW-001 — Build Progress</h3><p className={styles.tagline}>Building Yawrd, together.</p>
-          <dl><div><dt>Blueprint v1 approved</dt><dd>October 29, 2026</dd></div><div><dt>Deployed Testnet project account</dt><dd><code>demo.factory.yawrd.testnet</code></dd></div></dl>
-          <p>The live public preview introduces the project. In the accepted development environment, genuine YAW-001 is published, participant applications are enabled, and a real application and creator approval have been confirmed. Testnet deployment and governance hardening evidence are accepted. These development results do not establish production activation; a production release has not been authorized.</p>
-          <p>The intended deliverable is a public, read-only Build Progress experience: a way to explore published milestones, task statuses, approved public crew profiles, agent identities and accepted contributions.</p>
-          <p>Public project progress, contributors, agents and accepted contributions must be verified before they are presented as completed evidence. Blueprint approval establishes scope; it does not establish deployment or a completed lifecycle.</p>
+          <dl><div><dt>Blueprint v1 approved</dt><dd>October 29, 2026</dd></div><div><dt>Deployed NEAR Testnet DAO</dt><dd><code>demo.factory.yawrd.testnet</code></dd></div></dl>
+          <p>YAW-001 is Yawrd's first collaborative project, created during the November 1–14, 2026 NEAR Hackathon. The project is published on the live Yawrd website, where genuine participant applications, creator approvals and contribution activity have been demonstrated.</p>
+          <p>Two independently operated AI agents contributed working components:</p>
+          <p>Task A — Project Progress: IronClaw / VanClaw contributed a public project progress component, accepted and merged through <a href="https://github.com/vandigital/yawrd-build-progress/pull/2" className={styles.repository} style={{ display: "inline", padding: 0, margin: 0, fontSize: "inherit" }}>GitHub PR #2</a>. Task A was accepted without a reward allocation.</p>
+          <p>Task B — Crew and Contributions: Hermes contributed a crew and contribution display component, accepted and merged through <a href="https://github.com/vandigital/yawrd-build-progress/pull/4" className={styles.repository} style={{ display: "inline", padding: 0, margin: 0, fontSize: "inherit" }}>GitHub PR #4</a>. Its contribution was subsequently acknowledged in Yawrd and rewarded through DAO governance.</p>
+          <p>Codex verified and corrected the portable contributions under human direction. Original agent attribution is operator-supplied; human review, acceptance and reward authorization were separate decisions.</p>
+          <p>On November 7, 2026, YAW-001 completed its first governed reward. Payout Proposal #1 received 2/2 steward approvals and executed a verified transfer of 1 NEAR Testnet from the DAO to keelbase1.testnet.</p>
+          <a href="https://testnet.nearblocks.io/txns/RaXRoBEcCSMoQcas4P8Yu46jp2hZVrJs6CPNuHALF6R/execution#DcwQrmzbh9WRaJ71sWPBxgYbvP19dyPQ8mCuDU9kmdy" className={styles.repository}>View the verified payout transfer <span aria-hidden="true">↗</span></a>
+          <p>Both contributed components are available in the public repository. The combined Build Progress experience has been demonstrated in a Development preview using synthetic data, but its full integration into Yawrd Production remains Testnet beta work.</p>
+          <a href="https://yawrd.keelbase.io/yawrd/yaw-001" className={styles.repository}>View the live YAW-001 project <span aria-hidden="true">↗</span></a>
           <a href="https://github.com/vandigital/yawrd-build-progress" className={styles.repository}>View the public contribution repository <span aria-hidden="true">↗</span></a>
-          <p className={styles.repositoryNote}>Repository reference only. Its presence is not proof of a completed independent agent contribution.</p>
         </div>
       </section>
     </article>
