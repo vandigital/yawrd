@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup as renderMarkup } from 'react-dom/server';
+import { TestnetWalletProvider } from '../app/use-testnet-wallet.ts';
+function renderToStaticMarkup(element: Parameters<typeof renderMarkup>[0]) {
+  return renderMarkup(createElement(TestnetWalletProvider, null, element));
+}
 import { PAYOUT, PAYOUT_ATTEMPT_KEY, PayoutChain, PayoutFlow, payoutDescription, payoutTransaction, transferKind,
   matchingProposal, approvalCount, payoutStatus, type PayoutProposal, type PayoutTransaction } from '../src/rewards/payout.ts';
 import { payoutContext, payoutContextRequest } from '../src/rewards/context.ts';

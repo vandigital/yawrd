@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useState, type ReactNode } from 'react';
-import { ProjectHeader, ProjectWalletControls, projectButton } from './project-wallet-controls';
+import { ProjectWalletControls, projectButton } from './project-wallet-controls';
+import { RouteAccountControls, openAccountDisclosure } from './route-account-controls';
 import { useTestnetWallet } from '../use-testnet-wallet';
 import type { IdentityChallenge } from '../../src/identity/types';
 import type { ParticipantView } from '../../src/participants/types';
@@ -67,7 +68,7 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
     await refresh();
   }
   return <>
-    <ProjectHeader genesis={projectId === 'yaw-001'}>
+    <RouteAccountControls>
       <ProjectWalletControls wallet={wallet} view={view} busy={busy}
         onPrepare={() => { void run(prepare, true); }}
         onSelect={id => { setChallenge(null); wallet.selectAccount(id); }}
@@ -85,7 +86,7 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
         {error && walletAction && <p role="alert" className="mt-3 rounded-xl border border-[#d8a68d]/40 bg-[#d8a68d]/10 p-4 text-left text-sm leading-6 text-[#f1c5af]">{error}</p>}
         {busy && walletAction && <p role="status" className="mt-3 text-xs text-[#c2dedd]">Verifying or signing out… Please wait.</p>}
       </ProjectWalletControls>
-    </ProjectHeader>
+    </RouteAccountControls>
     {children}
     <section aria-labelledby="crew-title" className="mt-8 space-y-5 rounded-[20px] border border-[#377b78] bg-[linear-gradient(130deg,#002b2b,#001e20)] p-5 shadow-[0_16px_48px_#0002] sm:p-8">
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -129,7 +130,7 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
     </> : <div className="space-y-3 border-l-2 border-[#51afa7] pl-4">
       <h3 className="font-medium text-[#e7f2ed]">Sign in to take part</h3>
       <p className="text-sm leading-7 text-[#bed1c9]">Verify your Meteor Testnet wallet using the header controls to apply. If you created this Yawrd, sign in to review applications.</p>
-      <a href="#project-wallet" className="inline-flex min-h-11 items-center rounded-sm text-sm text-[#a9f1e9] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4">Go to wallet sign-in ↑</a>
+      <a onClick={openAccountDisclosure} href="#project-wallet" className="inline-flex min-h-11 items-center rounded-sm text-sm text-[#a9f1e9] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4">Go to wallet sign-in ↑</a>
     </div>}
     {(view.role === 'creator' || view.role === 'participant') && (view.restrictedContent?.trim() ? <section aria-labelledby="participant-info-title" className="rounded-2xl border border-[#79ada3]/40 bg-[#3d8c8a]/10 p-5">
       <p className="text-xs font-semibold text-[#91b5aa]">{view.role === 'creator' ? 'Creator access' : 'Crew Members · Approved access'}</p>

@@ -1,4 +1,3 @@
-import Image from "next/image";
 import styles from "./docs.module.css";
 
 const groups = [
@@ -10,11 +9,7 @@ const groups = [
 export default function DocsLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <div className={styles.shell}>
     <a href="#docs-content" className={styles.skip}>Skip to documentation</a>
-    <header className={styles.header}>
-      <a href="/" className={styles.brand} aria-label="Yawrd home"><Image src="/brand/yawrd-buoy.png" width={1254} height={1254} sizes="(max-width: 767px) 44px, 52px" alt="" className={styles.brandIcon} /><span>yawrd<span className={styles.dot}>.</span></span></a>
-      <span className={styles.headerLabel}>Documentation</span>
-      <a href="/" className={styles.back}>Back to Yawrd <span aria-hidden="true">↗</span></a>
-    </header>
+
     <div className={styles.workspace}>
       <aside className={styles.sidebar}>
         <details className={styles.navigation} open>

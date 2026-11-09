@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup as renderMarkup } from 'react-dom/server';
+import { TestnetWalletProvider } from '../app/use-testnet-wallet.ts';
+function renderToStaticMarkup(element: Parameters<typeof renderMarkup>[0]) {
+  return renderMarkup(createElement(TestnetWalletProvider, null, element));
+}
 import { CONTRIBUTION_DESCRIPTION_LIMIT, contributionDescriptionError } from '../src/contributions/validation.ts';
 import { canonicalTaskBSubmission } from '../src/contributions/submission-signature.ts';
 import { ContributionRepository } from '../src/contributions/repository.ts';

@@ -3,7 +3,11 @@ import test from 'node:test';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup as renderMarkup } from 'react-dom/server';
+import { TestnetWalletProvider } from '../app/use-testnet-wallet.ts';
+function renderToStaticMarkup(element: Parameters<typeof renderMarkup>[0]) {
+  return renderMarkup(createElement(TestnetWalletProvider, null, element));
+}
 import { ContributionExperience } from '../app/components/contribution-workspace.tsx';
 import { PersistedYawrdContent, PersistedYawrdPresentation } from '../app/components/persisted-yawrd.tsx';
 import { TASK_B_REWARD } from '../src/genesis/task-b-reward.ts';

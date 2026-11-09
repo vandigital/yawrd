@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { TestnetWalletProvider } from "./use-testnet-wallet";
+import { NavigationShell } from "./components/global-navigation";
 
 export const metadata: Metadata = {
   title: "Yawrd",
@@ -12,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><TestnetWalletProvider><NavigationShell>{children}</NavigationShell></TestnetWalletProvider></body>
     </html>
   );
 }

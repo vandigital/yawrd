@@ -123,23 +123,6 @@ export default function OpenYawrdPage() {
       <div aria-hidden="true" className="grid-texture pointer-events-none absolute inset-0 opacity-30" />
 
       <div className={styles.container}>
-        <header className={styles.header}>
-          <a href="/" className="flex items-center gap-3.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c2dedd]" aria-label="Yawrd home">
-            <Image src="/brand/yawrd-buoy.webp" alt="" width={159} height={192} unoptimized className={styles.buoy} />
-            <span className="text-[22px] font-semibold tracking-[-0.06em]">yawrd<span className="text-[#73aaa5]">.</span></span>
-          </a>
-          <div className={styles.wallet}>
-            <span className="rounded-full border border-[#3d8c8a]/50 bg-[#3d8c8a]/10 px-3 py-2 text-[11px] font-semibold text-[#c2dedd]">Testnet · Preview</span>
-            {wallet.accountId ? (
-              <button type="button" onClick={wallet.disconnect} disabled={wallet.busy} className="rounded-xl border border-[#456058] px-3 py-2 text-xs font-medium text-[#d6e6df] hover:border-[#c2dedd] disabled:opacity-50">Disconnect</button>
-            ) : (
-              <button type="button" onClick={wallet.connect} disabled={!wallet.ready || !wallet.available || wallet.busy} className="rounded-xl border border-[#456058] px-3 py-2 text-xs font-medium text-[#d6e6df] hover:border-[#c2dedd] disabled:opacity-50">{wallet.busy ? "Connecting…" : "Connect Meteor"}</button>
-            )}
-          </div>
-        </header>
-        {wallet.error && <p role="alert" className="mt-4 field-error">{wallet.error}</p>}
-        {wallet.ready && !wallet.available && <p role="alert" className="mt-4 field-error">Meteor Wallet is unavailable for Testnet connection.</p>}
-
         <section className={styles.intro}>
           <p className={styles.eyebrow}>From idea to a shared project</p>
           <h1>Create your <span>Yawrd</span></h1>

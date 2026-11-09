@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, createElement, useContext, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { NearConnector, SignMessageParams } from "@hot-labs/near-connect";
 import { initialWalletState, TestnetWalletSession } from "./wallet-session";
 import type { CreationTransaction } from "../src/creation-integration";
@@ -22,7 +22,7 @@ function getConnector(): Promise<NearConnector> {
   return connectorPromise;
 }
 
-export function useTestnetWallet() {
+function useWalletOwner() {
   const [state, setState] = useState(initialWalletState);
   const sessionRef = useRef<TestnetWalletSession | null>(null);
 
@@ -68,4 +68,18 @@ export function useTestnetWallet() {
   }, []);
 
   return { ...state, connect, disconnect, selectAccount, getContext, signCreation, signIdentity, signPayout };
+}
+
+// The persistent root owns wallet listeners; route consumers share its snapshot.
+const WalletContext = createContext<ReturnType<typeof useWalletOwner> | null>(null);
+
+export function TestnetWalletProvider({ children }: { children: ReactNode }) {
+  const wallet = useWalletOwner();
+  return createElement(WalletContext.Provider, { value: wallet }, children);
+}
+
+export function useTestnetWallet() {
+  const wallet = useContext(WalletContext);
+  if (!wallet) throw new Error("Wallet controls require TestnetWalletProvider.");
+  return wallet;
 }

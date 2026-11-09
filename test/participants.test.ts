@@ -4,7 +4,11 @@ import { GENESIS_YAW_001 } from '../src/genesis/yaw-001.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup as renderMarkup } from 'react-dom/server';
+import { TestnetWalletProvider } from '../app/use-testnet-wallet.ts';
+function renderToStaticMarkup(element: Parameters<typeof renderMarkup>[0]) {
+  return renderMarkup(createElement(TestnetWalletProvider, null, element));
+}
 import { createElement } from 'react';
 import { PersistentAuth, AUTH_RECIPIENT, BROWSER_COOKIE, SESSION_COOKIE, hashToken, sessionHash } from '../src/participants/auth.ts';
 import { authRequest, participantRequest, configuredOrigin } from '../src/participants/http.ts';
@@ -292,17 +296,16 @@ test('opaque token validation rejects empty, malformed and caller-selected ident
   assert.equal(BROWSER_COOKIE.startsWith('__Host-'), true);
 });
 
-test('Genesis creator has a header identity and review workspace, without applicant controls', () => {
+test('Genesis creator retains account identity and review workspace, without applicant controls', () => {
   const view: ParticipantView = { ...publicView, accountId: 'yawrd1.testnet', role: 'creator', applications: [{ id: appRow.id, accountId: 'alice.testnet', introduction: 'Saved introduction', status: 'pending', reviewerAccountId: null }] };
   const html = renderToStaticMarkup(createElement(PersistedYawrdPresentation, { project, view }));
   assert.match(html, /Creator workspace/);
-  assert.match(html, /NEP-413 verified · yawrd1.testnet · Creator/);
+  assert.match(html, /Verified account · NEP-413 · yawrd1.testnet · Creator/);
   assert.match(html, /Review applications/);
   assert.match(html, />Approve<\/button>/);
   assert.match(html, />Reject<\/button>/);
   assert.doesNotMatch(html, /<form|Apply to Join|A short introduction|Take part in this Yawrd|Application pending/);
-  assert.ok(html.indexOf('NEP-413 verified') < html.indexOf('</header>'));
-  assert.ok(html.indexOf('</header>') < html.indexOf('<h1'));
+  assert.doesNotMatch(html, /<header/); // Navigation is supplied once by the root layout.
 });
 
 test('verified applicant sees the recorded decision and reviewer without a second application', () => {
@@ -336,34 +339,34 @@ function walletMarkup(wallet = walletUi, view = publicView) {
 
 test('wallet controls follow actual connection, not the verified session or creator account name', () => {
   const disconnected = walletMarkup();
-  assert.match(disconnected, />Connect Meteor<\/button>/);
+  assert.match(disconnected, />Connect wallet<\/button>/);
   assert.match(disconnected, /Wallet disconnected/);
-  assert.doesNotMatch(disconnected, /Meteor connected|Disconnect Meteor/);
+  assert.doesNotMatch(disconnected, /Connected wallet · Meteor|Disconnect wallet/);
   const connected = walletMarkup({ ...walletUi, accountId: 'yawrd1.testnet', accountIds: ['yawrd1.testnet'] });
-  assert.match(connected, /Meteor connected/);
+  assert.match(connected, /Connected wallet · Meteor/);
   assert.match(connected, /Not signed in/);
-  assert.doesNotMatch(connected, />Connect Meteor<\/button>|NEP-413 verified|· Creator/);
-  assert.match(connected, />Disconnect Meteor<\/button>/);
+  assert.doesNotMatch(connected, />Connect wallet<\/button>|Verified account · NEP-413|· Creator/);
+  assert.match(connected, />Disconnect wallet<\/button>/);
   const sessionOnly = walletMarkup(walletUi, { ...publicView, accountId: 'yawrd1.testnet', role: 'creator' });
   assert.match(sessionOnly, /Wallet disconnected/);
-  assert.match(sessionOnly, /NEP-413 verified · yawrd1.testnet · Creator/);
+  assert.match(sessionOnly, /Verified account · NEP-413 · yawrd1.testnet · Creator/);
   assert.match(sessionOnly, />Sign out<\/button>/);
-  assert.doesNotMatch(sessionOnly, /Meteor connected|Prepare sign-in message/);
+  assert.doesNotMatch(sessionOnly, /Connected wallet · Meteor|Continue sign-in/);
 });
 
 test('wallet errors, unavailable state, multiple accounts and mismatched identities are visible', () => {
   const unavailable = walletMarkup({ ...walletUi, available: false, error: 'Connection was declined' });
   assert.match(unavailable, /Meteor is unavailable/);
   assert.match(unavailable, /role="alert"[^>]*>Connection was declined/);
-  assert.match(unavailable, /disabled=""[^>]*>Connect Meteor/);
+  assert.match(unavailable, /disabled=""[^>]*>Connect wallet/);
   const loading = walletMarkup({ ...walletUi, ready: false });
   assert.match(loading, /disabled=""[^>]*>Preparing wallet…/);
-  assert.doesNotMatch(loading, /Meteor connected/);
+  assert.doesNotMatch(loading, /Connected wallet · Meteor/);
   const switched = walletMarkup({ ...walletUi, accountId: 'bob.testnet', accountIds: ['alice.testnet', 'bob.testnet'] }, { ...publicView, accountId: 'alice.testnet' });
   assert.match(switched, /<select/);
   assert.match(switched, /selected=""[^>]*>bob.testnet/);
   assert.match(switched, /connected wallet differs from your verified account/);
-  assert.match(switched, /NEP-413 verified · alice.testnet/);
+  assert.match(switched, /Verified account · NEP-413 · alice.testnet/);
 });
 
 test('Genesis presentation retains persisted project copy and accepted evidence links', () => {

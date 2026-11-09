@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup as renderMarkup } from 'react-dom/server';
+import { TestnetWalletProvider } from '../app/use-testnet-wallet.ts';
+function renderToStaticMarkup(element: Parameters<typeof renderMarkup>[0]) {
+  return renderMarkup(createElement(TestnetWalletProvider, null, element));
+}
 import { ContributionRepository } from '../src/contributions/repository.ts';
 import { contributionRequest } from '../src/contributions/http.ts';
 import { CONTRIBUTION_TASKS, contributionActivation, contributionsActive, contributionPreviewEnabled, type ContributionActivation } from '../src/contributions/policy.ts';

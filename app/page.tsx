@@ -39,10 +39,7 @@ export default function LandingPage() {
   return <div className="landing-page">
     <a href="#main-content" className="landing-skip">Skip to content</a>
     <div aria-hidden="true" className="landing-dockyard" />
-    <header className="landing-header landing-container">
-      <Brand />
-      <p className="landing-beta"><span aria-hidden="true" />Currently in Beta on Testnet</p>
-    </header>
+
 
     <main id="main-content" tabIndex={-1}>
       <section aria-labelledby="hero-title" className="landing-hero landing-container">
@@ -96,7 +93,7 @@ export default function LandingPage() {
       </section>
     </main>
     <footer className="landing-footer">
-      <div className="landing-container landing-footer-inner"><Brand /><p>A Keelbase Experience.</p><Link href="/docs" className="ml-auto inline-flex min-h-6 shrink-0 items-center text-xs text-[#c1d3db] transition-colors hover:text-[#a6f7ec]">Docs</Link></div>
+      <div className="landing-container landing-footer-inner"><Brand /><p>A Keelbase Experience.</p></div>
     </footer>
   </div>;
 }
