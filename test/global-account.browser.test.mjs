@@ -164,6 +164,7 @@ root.render(<App />);
     await waitFor('!document.getElementById("project-wallet").textContent.includes("Verified account · NEP-413")');
     assert.equal(await evaluate('window.calls.logout'), 1);
     await evaluate('window.swap()'); await waitFor('!document.getElementById("project-wallet")');
+    await waitFor('document.querySelectorAll("#global-account button").length === 1');
     assert.equal(await evaluate('document.querySelectorAll("#global-account button").length'), 1, 'fallback returns when project unmounts');
     await evaluate('window.swap()'); await waitFor('!!document.getElementById("project-wallet")');
     assert.deepEqual(await evaluate('[window.calls.constructors,window.calls.subscriptions,window.calls.removals]'), [1,3,0], 'one persistent connector and listener owner across route consumers');

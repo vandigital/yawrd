@@ -42,15 +42,24 @@ export function RewardPayoutProvider({ children }: { children: ReactNode }) {
 }
 
 /** Reuses the allocation entry in Project Identity; no additional reward card. */
-export function RewardPayoutIdentity() {
+export function RewardPayoutIdentity({ compact = false }: { compact?: boolean }) {
   const { state } = useContext(State);
+  return <RewardPayoutIdentityContent state={state} compact={compact} />;
+}
+
+/** Presentation only; snapshots still come from the existing receipt verifier. */
+export function RewardPayoutIdentityContent({ state, compact = false }: { state: PayoutState; compact?: boolean }) {
   const transferLink = verifiedPayoutTransferLink(state.snapshot);
-  return <>
-    <p className="mt-2">Reward Payout status: {state.error && !state.snapshot ? 'Unverified — refresh payout status' : payoutStatus(state.snapshot)}</p>
+  const verification = <>
     <p className="mt-2">Payout Proposal: {state.snapshot?.proposal ? `#${state.snapshot.proposal.id} · ${approvalCount(state.snapshot.proposal)}/2 approvals` : state.snapshot && !state.snapshot.conflicts.length ? 'Not created' : 'Unverified'}</p>
     <p className="mt-2 text-[#b4cccb]">Two different Stewards must approve it before payment. This allocation is not payment approval.</p>
     {state.snapshot?.execution && <a className={link} href={transactionLink(state.snapshot.execution.hash)}>Verified final approval transaction · {state.snapshot.execution.hash} ↗</a>}
-    {transferLink && <p className="mt-2"><a className={link} href={transferLink} target="_blank" rel="noopener noreferrer">View Payout Transfer ↗</a></p>}
+  </>;
+  const receipt = transferLink && <p className="mt-2"><a className={link} href={transferLink} target="_blank" rel="noopener noreferrer">View Payout Transfer ↗</a></p>;
+  return <>
+    <p className="mt-2" role="status">Reward Payout status: {state.error && !state.snapshot ? 'Unverified — refresh payout status' : payoutStatus(state.snapshot)}</p>
+    {state.error && state.snapshot && <p className="mt-2 text-[#f1c5af]">Verification refresh unavailable. Showing the last verified result.</p>}
+    {compact ? <>{receipt}<details className="mt-3"><summary className="min-h-11 cursor-pointer py-3 text-[#a9f1e9]">Reward verification</summary>{verification}</details></> : <>{verification}{receipt}</>}
   </>;
 }
 

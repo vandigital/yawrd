@@ -53,8 +53,8 @@ test('public Project Identity shows allocation without login or publishing recip
   const project = { id:g.id, network:g.network, creatorAccountId:g.creatorAccountId, name:g.name, description:g.description, objectives:[...g.objectives], participation:g.participation, rewards:g.rewards };
   const view: ParticipantView = { accountId:null, role:'public', application:null, applications:[], restrictedContent:null };
   const html = renderToStaticMarkup(createElement(PersistedYawrdPresentation, { project, view }));
-  const identity = html.slice(html.indexOf('id="genesis-identity-title"'), html.indexOf('id="genesis-source-title"'));
-  assert.match(identity, /Task B · Conditional reward|1 NEAR on Testnet/);
+  const identity = html.slice(html.indexOf('id="genesis-identity-title"'), html.indexOf('</aside>'));
+  assert.match(identity, /Task B · Recorded reward|1 NEAR on Testnet/);
   assert.match(identity, /Reward Payout status: Allocated — chain status not yet verified/);
   assert.match(identity, /Two different Stewards/);
   assert.doesNotMatch(html, /keelbase1|keelbase\.testnet|hermes-yaw001|Reward amounts and terms remain unapproved|Paid<|>Approved</);

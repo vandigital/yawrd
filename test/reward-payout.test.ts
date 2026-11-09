@@ -373,7 +373,7 @@ test('second steward does not need creator/crew membership to see payout; public
   const project = { id: g.id, network: g.network, creatorAccountId: g.creatorAccountId, name: g.name, description: g.description, objectives: [...g.objectives], participation: g.participation, rewards: g.rewards };
   const view = { accountId: null, role: 'public' as const, application: null, applications: [], restrictedContent: null };
   const page = renderToStaticMarkup(createElement(PersistedYawrdPresentation, { project, view }));
-  assert.equal((page.match(/Task B · Conditional reward/g) ?? []).length, 1);
+  assert.equal((page.match(/Task B · Recorded reward/g) ?? []).length, 1);
   assert.match(page, /Reward Payout status: Allocated — chain status not yet verified/); assert.match(page, /Payout Proposal: Unverified/);
   assert.doesNotMatch(page, />Paid<|keelbase1\.testnet/);
   const creatorPage = renderToStaticMarkup(createElement(PersistedYawrdPresentation, { project, view: { ...view, accountId: PAYOUT.creator, role: 'creator' } }));

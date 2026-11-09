@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { genesisApplicationsClosed } from '../genesis/participation.ts';
 import type { Query, Row } from './database.ts';
 import type { AgentAssociation, Application, ParticipantView, PersistedProject } from './types.ts';
 import { GENESIS_YAW_001, GENESIS_PUBLICATION_CONSENT_VERSION, matchesGenesisIdentity, matchesGenesisProject, type GenesisDraftStatus, type GenesisPublication } from '../genesis/yaw-001.ts';
@@ -159,6 +160,9 @@ export class ParticipantRepository {
   }
 
   async apply(id: string, sessionHash: string, introduction: unknown, consent: unknown) {
+    // The repository is also called outside HTTP. Reject before any write or
+    // retry; history remains available through view/review, as before.
+    fail(!genesisApplicationsClosed(id), 'applications_closed', 409);
     fail(typeof introduction === 'string' && introduction.trim().length > 0 && introduction.trim().length <= 1000 && consent === true, 'introduction_and_consent_required');
     const rows = await this.query(`INSERT INTO yawrd.applications(id, network, project_id, account_id, introduction, consent_version)
       SELECT $3::uuid, p.network, p.id, s.account_id, $4, 'participant-v1'

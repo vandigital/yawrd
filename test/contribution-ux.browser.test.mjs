@@ -166,7 +166,7 @@ window.ux.form();
     });
     await t.test('refresh removes private contribution records after session revocation', async () => {
       await evaluate('window.ux.revoke()'); await refresh();
-      await waitFor('!document.getElementById("contributions") && document.body.textContent.includes("Sign in to take part")');
+      await waitFor('!document.getElementById("contributions") && document.body.textContent.includes("Sign in to your workspace")');
       assert.equal(await evaluate('document.body.textContent.includes("Synthetic recorded contribution")'), false);
     });
     await t.test('refresh rejects contribution state belonging to another account', async () => {

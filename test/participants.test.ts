@@ -369,7 +369,7 @@ test('wallet errors, unavailable state, multiple accounts and mismatched identit
   assert.match(switched, /Verified account · NEP-413 · alice.testnet/);
 });
 
-test('Genesis presentation retains persisted project copy and accepted evidence links', () => {
+test('Genesis presentation retains original persisted context in disclosures and accepted evidence links', () => {
   const g = GENESIS_YAW_001;
   const persisted = { ...project, id: g.id, creatorAccountId: g.creatorAccountId, name: 'Persisted project title', description: 'First saved paragraph.\n\nSecond saved paragraph.', objectives: ['Saved objective'], participation: 'Saved participation terms', rewards: 'Saved reward terms' };
   const html = renderToStaticMarkup(createElement(PersistedYawrdPresentation, { project: persisted, view: publicView }));

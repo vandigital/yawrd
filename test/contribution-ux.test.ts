@@ -77,13 +77,13 @@ test('existing public Project Identity displays the conditional Testnet allocati
     description: g.description, objectives: [...g.objectives], participation: g.participation, rewards: g.rewards };
   const view: ParticipantView = { accountId: null, role: 'public', application: null, applications: [], restrictedContent: null };
   const html = renderToStaticMarkup(createElement(PersistedYawrdPresentation, { project, view }));
-  const identity = html.slice(html.indexOf('id="genesis-identity-title"'), html.indexOf('id="genesis-source-title"'));
-  assert.match(identity, /Task B · Conditional reward/);
+  const identity = html.slice(html.indexOf('id="genesis-identity-title"'), html.indexOf('</aside>'));
+  assert.match(identity, /Task B · Recorded reward/);
   assert.match(identity, /1 NEAR on Testnet/);
   assert.match(identity, /Reward Payout status: Allocated — chain status not yet verified/);
   assert.match(identity, /Payout Proposal: Unverified/);
   assert.match(identity, /Two different Stewards must approve it before payment/);
   assert.match(identity, /This allocation is not payment approval/);
-  assert.equal((identity.match(/Task B · Conditional reward/g) ?? []).length, 1);
+  assert.equal((identity.match(/Task B · Recorded reward/g) ?? []).length, 1);
   assert.doesNotMatch(identity, />Paid<|>Approved<|keelbase1\.testnet/);
 });
