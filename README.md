@@ -34,6 +34,8 @@ This was a real, bounded lifecycle—not a simulated payout or synthetic contrib
 
 Participation, contribution acceptance and treasury authorization are deliberately separate decisions.
 
+In the accepted release candidate, YAW-001 is **Completed · Applications closed**: new applications are blocked by the server, while authorized historical participation, contribution and Steward workspaces remain available. These changes take effect on deployment; the live site may still serve an earlier release.
+
 ## Genesis: YAW-001 — Build Progress
 
 *Building Yawrd, together.*
@@ -77,6 +79,14 @@ The transfer receipt is the result of the final approval transaction, not a sepa
 For detailed contribution provenance, verification and limitations, see the [YAW-001 Build Progress README](https://github.com/vandigital/yawrd-build-progress).
 
 ---
+
+## Judge walkthrough
+
+1. Open [YAW-001](https://yawrd.keelbase.io/yawrd/yaw-001). On the released candidate, inspect the completed project, closed applications, accepted work and recorded Testnet reward.
+2. Choose **Follow the Build** to open the [public contribution repository](https://github.com/vandigital/yawrd-build-progress); inspect the merged changes and review evidence in [Task A PR #2](https://github.com/vandigital/yawrd-build-progress/pull/2) and [Task B PR #4](https://github.com/vandigital/yawrd-build-progress/pull/4).
+3. Inspect Proposal **#1** through the project's reward/governance evidence or the [project contract](https://testnet.nearblocks.io/address/demo.factory.yawrd.testnet#contract), using the read-only `get_proposal` method with `{"id":1}`: the recorded reward is 1 NEAR Testnet to `keelbase1.testnet`, with a 2/2 Steward policy. The [payout integration notes](docs/yaw001-reward-payout.md) explain proposal reads and verification.
+4. Inspect the [final Steward approval transaction](https://testnet.nearblocks.io/txns/RaXRoBEcCSMoQcas4P8Yu46jp2hZVrJs6CPNuHALF6R) and its [transfer execution receipt](https://testnet.nearblocks.io/txns/RaXRoBEcCSMoQcas4P8Yu46jp2hZVrJs6CPNuHALF6R/execution#DcwQrmzbh9WRaJ71sWPBxgYbvP19dyPQ8mCuDU9kmdy). The transfer executes within that approval transaction; it is not a separately signed payout transaction.
+5. Review the architecture, local setup, validation record and limitations below. Public evidence inspection requires no wallet signature; historical workspaces require existing authorization.
 
 ## How Yawrd works
 
@@ -151,20 +161,24 @@ npm run test:payout
 npm run build
 ```
 
-**November 9, 2026 validation record**
+**Accepted 09A.4 validation — November 9, 2026**
+
+The 09A.4 release-candidate acceptance report validates exact candidate `32a362a38ef21c1ed8c8e29f53995fbf919bec76`:
 
 | Check | Result |
 |---|---|
-| Standard test suite | 240 passed |
+| Core test suite | 247 passed |
 | Contribution test suite | 194 passed |
 | Payout test suite | 39 passed |
 | TypeScript validation | Passed |
 | Production build | Passed |
-| Local HTTP smoke checks | 8 passed |
+| Browser checks | 20 passed |
 
-The standard suite result includes a focused test correction in publication-preparation commit `5c4b6ac`. Application code is unchanged from parent release `dade451`.
+Publication preparation culminated in README commit `5ff772e` after focused test correction `5c4b6ac`. Two subsequent UX milestones changed the application: shared navigation (`99537e8`, 09A.1a) and the YAW-001 project redesign/application closure (`32a362a`, 09A.2). The table reflects the later 09A.4 acceptance, superseding the preparation checkpoint's 240 core tests and eight HTTP smoke checks; those earlier smoke checks are historical, not fresh candidate results.
 
-These are separately executed suites and should not be combined into a single coverage count. Tests use synthetic or injected dependencies where applicable. They do not establish fresh live database, wallet, browser-interaction or on-chain execution results.
+The committed [09A.1a](docs/milestone-09a-1a-shared-navigation.md) and [09A.2](docs/milestone-09a-2-project-experience.md) reports preserve their original implementation/review snapshots. References there to uncommitted work, pending acceptance, local paths and ignored screenshots/logs describe those checkpoints, not the accepted candidate or publicly bundled artifacts.
+
+These separately executed suites should not be combined into a single coverage count. Browser coverage includes built routes and offline fixtures with mocked wallet/auth/RPC responses. It does not establish fresh live database, Meteor, Production or on-chain acceptance. This README-only follow-up does not rerun or replace the accepted application validation.
 
 ## MVP status and limitations
 
@@ -174,14 +188,15 @@ Yawrd currently demonstrates one founder-operated, end-to-end collaborative proj
 
 Important boundaries:
 
-- **Project creation:** The `/create` Builder provides the creation interface, but the Genesis DAO was deployed through authorized CLI/operator actions rather than demonstrated self-service deployment from the browser.
+- **Project creation:** `/create` remains preview-only with `testnetFactorySettings = null`; the public browser deployment workflow is incomplete. Genesis used authorized CLI/operator deployment. This UI gate does not restrict the existing factory's permissionless payable `create` method: callers can invoke it directly outside Yawrd, incur setup deposits/network fees and create projects without Yawrd approval. Creation does not confer platform publication, membership or reward authorization; factory exposure requires separate owner review. See the [creation compatibility record](docs/milestone-05.1.md#c-factory-compatibility).
 - **Discovery:** The landing experience includes curated project presentation, not a general searchable project marketplace.
+- **Authentication:** Shared navigation and account controls are implemented. Guided global sign-in and cross-page verified-session presentation/logout remain deferred; wallet connection alone is not authentication. Existing project-scoped signed-message verification remains available.
 - **Agents:** Associations are participant-consented and operator-attested. Yawrd does not host or independently verify agents.
 - **Build Progress:** Both accepted components are public; the combined experience remains a synthetic Development preview awaiting Production integration.
 - **Rewards:** The demonstrated 1 NEAR payout is a fixed YAW-001 Testnet workflow, not a generalized automated compensation or Mainnet payment service.
 - **Governance:** The demonstrated two-Steward approval policy used two founder-controlled wallet accounts. Broader authorization and operational hardening remain future work.
 
-The next phase focuses on improved user experience, Build Progress integration and a carefully controlled Testnet beta.
+The accepted candidate includes shared navigation and the completed-project experience. Production Build Progress integration, guided global authentication and a controlled Testnet beta remain future work.
 
 ## Contributing
 
@@ -196,6 +211,10 @@ Changes to the main Yawrd platform remain subject to maintainer review and autho
 Yawrd is a Keelbase initiative.
 
 This repository is publicly available for inspection and hackathon evaluation. **No general software reuse license is granted at this stage.** Public visibility should not be interpreted as permission to reuse, redistribute or relicense the application, brand or artwork. Existing third-party license obligations and contributor attribution remain applicable.
+
+**Reuse and hackathon-period work:** The [approved Blueprint](docs/genesis/YAW-001_BLUEPRINT_V1.md#5-build-architecture) identifies existing Keelbase/Sputnik-derived governance infrastructure. This is reused foundation, not a newly authored hackathon smart contract. Repository history also records Yawrd safeguards, creation/wallet integration, participant foundations, Blueprint work and public component contracts on October 27–31, before the stated November 1–14 hackathon window (`dfb7939` through `7e1837a`).
+
+Within that window, recorded Yawrd commits include landing copy/artwork (`af172de`, November 1), Genesis publication preparation (`ed36d37`, November 3), project presentation (`8b9c5e6`, November 4), contribution acceptance and governed reward/receipt integration (`e391043` through `c97c62a`, November 7), and shared navigation/completed-project UX (`99537e8`, `32a362a`, November 9). These are repository commit dates, not proof of when every line was authored. Public PR #2 and PR #4 provide separately reviewable contribution evidence; this repository does not establish the original development dates of the reused Keelbase/Sputnik foundations.
 
 The public upstream Sputnik implementation and the separately contributed Build Progress components retain their respective provenance and licensing considerations.
 
