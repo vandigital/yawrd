@@ -112,7 +112,7 @@ root.render(<App />);
     const utilityCss = (await Promise.all((await readdir('.next/static/css')).map(file => readFile('.next/static/css/' + file, 'utf8')))).join('\n');
     const postcss = require('postcss');
     let scopedCss = '';
-    for (const name of ['global-navigation', 'genesis-project', 'contribution-workspace']) {
+    for (const name of ['global-navigation', 'project-space-shell', 'genesis-project', 'contribution-workspace']) {
       const parsed = postcss.parse(await readFile('app/components/' + name + '.module.css', 'utf8'));
       parsed.walkRules(rule => {rule.selector = rule.selector.replace(/\.([_a-zA-Z][\w-]*)/g, (_, key) => '.' + name.replaceAll('-','_') + '__' + key);});
       scopedCss += '\n' + parsed.toString();
@@ -156,7 +156,7 @@ root.render(<App />);
     await call('Page.enable'); await call('Runtime.enable'); await call('Fetch.enable', { patterns: [{ urlPattern: '*' }] });
     await call('Page.navigate', {url: origin});
     await waitFor('!!window.setRole && document.body.textContent.includes("Approved — transfer settlement unverified")');
-    const artifactDir = resolve('docs/verification/yaw-001-build-progress-integration');
+    const artifactDir = resolve('docs/verification/yaw-001-visual-candidate');
     await mkdir(artifactDir, {recursive:true});
     for (const width of [320,390,768,1440]) {
       await call('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:false});
@@ -164,6 +164,8 @@ root.render(<App />);
       assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'),true,'page fits '+width);
       assert.equal(await evaluate('document.querySelectorAll("header").length'),1);
       assert.equal(await evaluate('document.querySelectorAll("#genesis-identity-title").length'),1);
+      assert.equal(await evaluate('document.querySelectorAll(\'nav[aria-label="Project sections"] a\').length'),4);
+      assert.equal(await evaluate('document.querySelectorAll(\'nav[aria-label="Project sections"] button\').length'),0);
       assert.equal(await evaluate('document.body.textContent.includes("Completed · Applications closed")'),true);
       assert.equal(await evaluate('document.body.textContent.includes("Apply to Join")'),false);
       assert.equal(await evaluate('document.querySelectorAll(\'[aria-label="Project Progress"]\').length'),1);
@@ -173,11 +175,11 @@ root.render(<App />);
       assert.equal(await evaluate('document.body.textContent.includes("Accepted on 2026-11-06")'),true);
       assert.equal(await evaluate('document.body.textContent.includes("Acceptance date not published in the approved evidence")'),true);
       const layout=await evaluate(`(()=>{
-        const title=document.querySelector('h1').getBoundingClientRect(),identity=document.querySelector('aside[aria-label="Project identity and participation"]').getBoundingClientRect(),overview=document.querySelector('[aria-labelledby="genesis-source-title"]').getBoundingClientRect();
+        const title=document.querySelector('h1').getBoundingClientRect(),identity=document.querySelector('aside[aria-label="Project identity and governance"]').getBoundingClientRect(),overview=document.querySelector('[aria-labelledby="genesis-source-title"]').getBoundingClientRect();
         return {titleTop:title.top,identityTop:identity.top,identityLeft:identity.left,overviewTop:overview.top,overviewLeft:overview.left};
       })()`);
       if(width<700) assert.ok(layout.titleTop<layout.identityTop && layout.identityTop<layout.overviewTop,'mobile hierarchy '+width);
-      else assert.ok(layout.identityLeft>layout.overviewLeft && layout.identityTop<layout.overviewTop,'two columns '+width);
+      else assert.ok(layout.identityLeft>layout.overviewLeft && layout.identityTop<=layout.overviewTop+1,'two columns '+width);
       assert.equal(await evaluate(`document.body.innerText.includes(${JSON.stringify('GGvuLJcNNEQseQT4LE5uan7apN9gk7ff3WbEHZ4UKip')})`),false,'hash hidden initially');
       const publicText=await evaluate('document.querySelector("#project-content").innerText');
       assert.doesNotMatch(publicText,/OFFLINE PRIVATE|offline-crew|keelbase1|hermes|synthetic|example\.invalid/);

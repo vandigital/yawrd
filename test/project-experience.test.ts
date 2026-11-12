@@ -122,6 +122,11 @@ test('public completion showcase contains published progress, proof and no priva
   assert.match(html, /Acceptance date not published in the approved evidence/);
   assert.match(html, /Task A is accepted, but its acceptance date is not published/);
   assert.match(html, /id="proof-of-contribution-title">Proof of Contribution/);
+  assert.match(html, /Contribution provenance is operator-attested/);
+  assert.match(html, /do not cryptographically prove agent authorship/);
+  assert.match(html, /aria-label="Project sections"/);
+  assert.equal((html.match(/href="#(?:overview|deliverables|proof-of-contribution|project-context)"/g) ?? []).length, 4);
+  assert.doesNotMatch(html, /role="tab"|aria-selected=/);
   assert.doesNotMatch(html, /aria-label="Crew and contributions"/);
   assert.equal((html.match(/id="genesis-identity-title"/g) ?? []).length, 1);
   assert.doesNotMatch(html, /PRIVATE_|fixture.testnet|keelbase1.testnet|hermes-yaw001|Apply to Join|<textarea|<form|Take part in this Yawrd/);
@@ -136,6 +141,7 @@ test('public completion showcase contains published progress, proof and no priva
   assert.match(html, /Separate from Project Funds or future funding/);
   const source = readFileSync(new URL('../app/components/genesis-project.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /build-progress-preview|preview-data|fixtures|CrewAndContributions|agentAssociation|\.applications/);
+  assert.match(source, /Host adapter only: the accepted public component remains byte-for-byte unchanged/);
 });
 
 test('completed project retains creator, participant and Steward workspaces below public content', () => {
