@@ -2,6 +2,8 @@ import type { PersistedProject } from '../../src/participants/types';
 import { GENESIS_YAW_001 as genesis } from '../../src/genesis/yaw-001';
 import { genesisApplicationsClosed } from '../../src/genesis/participation';
 import { TASK_B_REWARD } from '../../src/genesis/task-b-reward';
+import { YAW_001_CONTRIBUTION_PROOF, YAW_001_DELIVERABLE_COMPLETION, YAW_001_PROJECT_PROGRESS } from '../../src/genesis/build-progress-publication';
+import { ProjectProgress } from '../../components/ProjectProgress';
 import { YawrdAvatar, YawrdBrandIcon } from './buoy-mark';
 import { ProjectCover } from './project-presentation';
 import { RewardPayoutIdentity } from './reward-payout';
@@ -30,6 +32,10 @@ export function GenesisProjectPresentation({ project }: { project: PersistedProj
           <h1>Build Progress</h1>
           <p className={styles.tagline}>{genesis.tagline}</p>
           <p className={styles.badge}>{closed ? 'Completed on Testnet' : 'Deployed on Testnet'}</p>
+          <p className={styles.completion} aria-label={`${YAW_001_DELIVERABLE_COMPLETION.accepted} of ${YAW_001_DELIVERABLE_COMPLETION.total} deliverables accepted`}>
+            <strong>{YAW_001_DELIVERABLE_COMPLETION.accepted}/{YAW_001_DELIVERABLE_COMPLETION.total}</strong>
+            <span>deliverables accepted</span>
+          </p>
         </div>
 
         <aside aria-label="Project identity and participation" className={styles.identity}>
@@ -76,11 +82,19 @@ export function GenesisProjectPresentation({ project }: { project: PersistedProj
           <p className={styles.note}>Explore the accepted work and contribution guidance on GitHub.</p>
         </section>
 
-        <section aria-labelledby="accepted-contributions-title" className={styles.contributions}>
-          <div className={styles.sectionHeading}><h2 id="accepted-contributions-title">Accepted contributions</h2><span>Genesis build</span></div>
+        <section aria-labelledby="published-progress-title" className={styles.progress}>
+          <div className={styles.sectionHeading}><h2 id="published-progress-title">Published progress</h2><span>Evidence-backed snapshot</span></div>
+          <div className={styles.progressPanel}><ProjectProgress data={YAW_001_PROJECT_PROGRESS} /></div>
+          <p className={styles.progressNote}>Task A is accepted, but its acceptance date is not published in the approved evidence. Its merge date is not used as a substitute.</p>
+        </section>
+
+        <section aria-labelledby="proof-of-contribution-title" className={styles.contributions}>
+          <div className={styles.sectionHeading}><h2 id="proof-of-contribution-title">Proof of Contribution</h2><span>2 accepted deliverables</span></div>
           <ul>
-            <li><div><span className={styles.task}>Task A</span><h3>Project progress</h3><p>Task A is accepted with no payout allocated by this decision.</p></div><a href={`https://github.com/${genesis.publicRepository}/pull/2`}>Task A · PR #2 ↗</a></li>
-            <li><div><span className={styles.task}>Task B</span><h3>Crew &amp; contributions</h3><p>Accepted work · Recorded Testnet reward shown in Project identity.</p></div><a href={TASK_B_REWARD.prUrl}>Task B · PR #4 ↗</a></li>
+            {YAW_001_CONTRIBUTION_PROOF.map(item => <li key={item.ref}>
+              <div><span className={styles.task}>{item.label} · {item.status}</span><h3>{item.title}</h3><p>{item.acceptance}</p><p>{item.reward}</p></div>
+              <div className={styles.proofLinks}><a href={item.prUrl}>{item.label} · Reviewed PR ↗</a><a href={item.mergeUrl}>{item.label} · Merged source ↗</a></div>
+            </li>)}
           </ul>
         </section>
 

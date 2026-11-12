@@ -58,7 +58,9 @@ test('public Project Identity shows allocation without login or publishing recip
   assert.match(identity, /Reward Payout status: Allocated — chain status not yet verified/);
   assert.match(identity, /Two different Stewards/);
   assert.doesNotMatch(html, /keelbase1|keelbase\.testnet|hermes-yaw001|Reward amounts and terms remain unapproved|Paid<|>Approved</);
-  assert.match(html, /Task A is accepted with no payout allocated/);
+  assert.match(html, /Task A · Accepted/);
+  assert.match(html, /Acceptance date not published in the approved evidence/);
+  assert.match(html, /No payout allocated by this decision/);
   const other = renderToStaticMarkup(createElement(PersistedYawrdContent, { project: { ...project, id:'other-project' } }));
   assert.doesNotMatch(other, /Reward Payout status/);
 });

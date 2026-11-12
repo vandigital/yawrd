@@ -10,7 +10,7 @@
 .orbit { position: absolute; top: 50%; left: 50%; width: 400px; height: 100px; border: 1px solid #a9f1e933; border-radius: 50%; transform: translate(-50%, -50%) rotate(-12deg); box-shadow: 0 0 0 28px #a9f1e909; }
 .bob { position: absolute; width: 76px; height: 92px; left: calc(50% - 38px); top: 20px; mix-blend-mode: screen; filter: drop-shadow(0 8px 14px #00181999); }
 .banner > p { position: absolute; bottom: 16px; left: 32px; color: #d2e9e4; font-size: 11px; letter-spacing: .03em; }
-.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(290px, 350px); grid-template-areas: 'heading identity' 'overview identity' 'contributions identity' 'context identity'; align-items: start; gap: 28px 48px; padding: 36px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(290px, 350px); grid-template-areas: 'heading identity' 'overview identity' 'progress identity' 'contributions identity' 'context identity'; align-items: start; gap: 28px 48px; padding: 36px; }
 .layout > * { min-width: 0; }
 .heading { grid-area: heading; }
 .eyebrow { color: #8fe5d9; font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .15em; }
@@ -18,6 +18,8 @@
 .heading h1 { margin-top: 10px; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(42px, 4.6vw, 62px); font-weight: 500; line-height: 1.08; letter-spacing: -.055em; }
 .tagline { margin-top: 12px; font-size: 19px; line-height: 1.5; color: #d8eae6; }
 .badge { display: inline-flex; margin-top: 18px; padding: 6px 12px; border: 1px solid #79ada366; border-radius: 24px; background: #8fe5d90a; color: #a9f1e9; font-size: 11px; }
+.completion { display: flex; width: fit-content; align-items: baseline; gap: 9px; margin-top: 12px; color: #d8eae6; font-size: 12px; }
+.completion strong { font-family: Georgia, 'Times New Roman', serif; color: #a9f1e9; font-size: 23px; font-weight: 500; }
 .identity { grid-area: identity; border: 1px solid #568d8580; border-radius: 18px; padding: 24px; background: linear-gradient(145deg, #0b3937, #002426); font-size: 12px; line-height: 1.7; color: #e0ece9; }
 .creator { display: flex; align-items: center; gap: 12px; margin-block: 20px; }
 .creator > div { min-width: 0; }
@@ -41,18 +43,24 @@
 .detailBody ul { list-style: disc; padding-left: 16px; display: grid; gap: 12px; }
 .hash { display: block; font-family: monospace; font-size: 11px; overflow-wrap: anywhere; }
 .overview { grid-area: overview; }
-.overview h2, .contributions h2 { font-size: 18px; font-weight: 500; letter-spacing: -.025em; color: #f2f7f5; }
+.overview > h2, .progress > .sectionHeading h2, .contributions > .sectionHeading h2 { font-size: 18px; font-weight: 500; letter-spacing: -.025em; color: #f2f7f5; }
 .overview > p:first-of-type { margin-top: 10px; max-width: 510px; font-size: 14px; line-height: 1.85; color: #bed1c9; }
 .follow { display: inline-flex; align-items: center; justify-content: space-between; gap: 32px; min-height: 48px; margin-block: 20px 8px; border-radius: 12px; padding: 12px 20px; background: #a9f1e9; color: #002026; font-size: 14px; font-weight: 650; }
 .project .follow:hover { color: #002026; background: #d5fff8; }
+.progress { grid-area: progress; }
+.progressPanel { margin-top: 4px; border: 1px solid #a8c9c4; border-radius: 14px; padding: 20px; overflow: hidden; background: #f6fbfa; color: #173b3a; }
+.progressPanel a { overflow-wrap: anywhere; }
+.project .progressPanel a:hover { color: #024b75; }
+.progressNote { margin-top: 12px; color: #b4cccb; font-size: 12px; line-height: 1.75; }
 .contributions { grid-area: contributions; }
 .sectionHeading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 12px; }
 .sectionHeading > span { color: #91b5aa; font-size: 10px; }
-.contributions li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #568d854d; padding-block: 16px; }
+.contributions li { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; border-top: 1px solid #568d854d; padding-block: 16px; }
 .contributions h3 { margin-top: 4px; color: #e0ece9; font-size: 14px; font-weight: 500; }
 .contributions li p { max-width: 320px; margin-top: 5px; color: #b4cccb; font-size: 12px; line-height: 1.75; }
 .task { font-size: 10px; color: #8fe5d9; }
 .contributions a { display: inline-flex; align-items: center; min-height: 44px; color: #a9f1e9; font-size: 12px; text-decoration: underline; }
+.proofLinks { display: grid; justify-items: start; }
 .context { grid-area: context; }
 @media (max-width: 900px) {
   .layout { gap: 24px; padding: 28px; grid-template-columns: minmax(0, 1fr) minmax(270px, .8fr); }
@@ -63,10 +71,11 @@
   .banner { height: 112px; }
   .banner > p { left: 20px; bottom: 10px; font-size: 10px; }
   .bob { width: 56px; height: 68px; left: calc(50% - 28px); top: 12px; }
-  .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'identity' 'overview' 'contributions' 'context'; gap: 24px; padding: 20px; }
+  .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'heading' 'identity' 'overview' 'progress' 'contributions' 'context'; gap: 24px; padding: 20px; }
   .heading h1 { font-size: clamp(38px, 9vw, 52px); }
   .tagline { font-size: 16px; margin-top: 8px; }
   .badge { margin-top: 14px; }
   .identity { padding: 20px; }
   .follow { display: flex; }
+  .progressPanel { padding: 16px; }
 }

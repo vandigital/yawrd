@@ -377,7 +377,9 @@ test('Genesis presentation retains original persisted context in disclosures and
   assert.ok(!html.includes(persisted.rewards), 'Genesis uses the fixed approved reward terms');
   assert.match(html, /Task B has a conditional allocation of 1 NEAR on Testnet\./);
   assert.match(html, /A Steward must propose the reward and two distinct Stewards must approve it before payment\./);
-  assert.match(html, /Task A is accepted with no payout allocated by this decision\./);
+  assert.match(html, /Task A · Accepted/);
+  assert.match(html, /Acceptance date not published in the approved evidence\./);
+  assert.match(html, /No payout allocated by this decision\./);
   assert.match(html, /Contribution submission or acknowledgement does not approve payment\./);
   for (const path of [`address/${g.creatorAccountId}`, `address/${g.daoAccountId}`, `address/${g.factoryAccountId}`, `txns/${g.creationTransaction}`, `txns/${g.hardeningTransaction}`]) assert.ok(html.includes(`href="https://testnet.nearblocks.io/${path}"`), path);
   assert.ok(html.includes(`href="https://github.com/${g.publicRepository}"`));

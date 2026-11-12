@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -8,6 +9,8 @@ import { participantRequest } from '../src/participants/http.ts';
 import { SESSION_COOKIE } from '../src/participants/auth.ts';
 import { GENESIS_YAW_001 as genesis } from '../src/genesis/yaw-001.ts';
 import { genesisApplicationsClosed } from '../src/genesis/participation.ts';
+import { YAW_001_CONTRIBUTION_PROOF, YAW_001_DELIVERABLE_COMPLETION, YAW_001_PROJECT_PROGRESS } from '../src/genesis/build-progress-publication.ts';
+import { assertProjectProgressData } from '../contracts/build-progress/contract.ts';
 import type { ParticipantView, PersistedProject } from '../src/participants/types.ts';
 import { PersistedYawrdPresentation } from '../app/components/persisted-yawrd.tsx';
 import { RewardPayoutIdentityContent } from '../app/components/reward-payout.tsx';
@@ -92,22 +95,47 @@ test('closure preserves authenticated history reads and creator review through e
   assert.equal(writes, 1);
 });
 
-test('public completion showcase contains approved evidence, one identity and no private roster or synthetic activity', () => {
+test('server-owned publication uses the accepted component and only verified public evidence', () => {
+  assert.doesNotThrow(() => assertProjectProgressData(YAW_001_PROJECT_PROGRESS));
+  assert.equal(YAW_001_PROJECT_PROGRESS.dataKind, 'published');
+  assert.deepEqual(YAW_001_PROJECT_PROGRESS.tasks.map(task => [task.id, task.status]), [['task-a', 'completed'], ['task-b', 'completed']]);
+  assert.deepEqual(YAW_001_PROJECT_PROGRESS.recentActivity.map(activity => [activity.id, activity.acceptedOn]), [['task-b-acceptance', '2026-11-06']]);
+  assert.equal(YAW_001_CONTRIBUTION_PROOF[0].acceptance, 'Acceptance date not published in the approved evidence.');
+  assert.equal(YAW_001_CONTRIBUTION_PROOF[1].acceptance, 'Accepted November 6, 2026.');
+  assert.deepEqual(YAW_001_DELIVERABLE_COMPLETION, { accepted: 2, total: 2 });
+  assert.doesNotMatch(JSON.stringify({ progress: YAW_001_PROJECT_PROGRESS, proof: YAW_001_CONTRIBUTION_PROOF }), /synthetic|example\.invalid|keelbase1|hermes|agentId|profileUrl/i);
+  const accepted = readFileSync(new URL('../components/ProjectProgress.tsx', import.meta.url));
+  assert.equal(createHash('sha256').update(accepted).digest('hex'), 'bcf7fd9e2c8256fae77d5f3d2250da59c3948bd8de245e4bd9fc7c14049c9c8a');
+});
+
+test('public completion showcase contains published progress, proof and no private roster or synthetic activity', () => {
   const html = render();
   assert.match(html, /<h1>Build Progress<\/h1>/);
   assert.match(html, /Completed on Testnet/);
   assert.match(html, /Completed · Applications closed/);
+  assert.match(html, /aria-label="2 of 2 deliverables accepted"/);
+  assert.match(html, /<strong>2\/2<\/strong>/);
+  assert.match(html, /role="region" aria-label="Project Progress"/);
+  assert.match(html, /Build Progress component deliverables accepted/);
+  assert.match(html, /Task B · Crew &amp; contributions accepted/);
+  assert.match(html, /Accepted on 2026-11-06/);
+  assert.match(html, /Acceptance date not published in the approved evidence/);
+  assert.match(html, /Task A is accepted, but its acceptance date is not published/);
+  assert.match(html, /id="proof-of-contribution-title">Proof of Contribution/);
+  assert.doesNotMatch(html, /aria-label="Crew and contributions"/);
   assert.equal((html.match(/id="genesis-identity-title"/g) ?? []).length, 1);
   assert.doesNotMatch(html, /PRIVATE_|fixture.testnet|keelbase1.testnet|hermes-yaw001|Apply to Join|<textarea|<form|Take part in this Yawrd/);
-  assert.doesNotMatch(html, /recent activity|synthetic|Development preview/i);
+  assert.doesNotMatch(html, /synthetic|Development preview|example\.invalid/i);
   for (const url of [`https://github.com/${genesis.publicRepository}`, `https://github.com/${genesis.publicRepository}/pull/2`, PAYOUT.prUrl,
+    ...YAW_001_CONTRIBUTION_PROOF.map(item => item.mergeUrl),
     `https://testnet.nearblocks.io/address/${genesis.creatorAccountId}`, `https://testnet.nearblocks.io/address/${genesis.daoAccountId}`,
     `https://testnet.nearblocks.io/address/${genesis.factoryAccountId}`, `https://testnet.nearblocks.io/txns/${genesis.creationTransaction}`,
     `https://testnet.nearblocks.io/txns/${genesis.hardeningTransaction}`]) assert.ok(html.includes(`href="${url}"`), url);
-  assert.match(html, /Task A is accepted with no payout allocated/);
+  assert.match(html, /No payout allocated by this decision/);
+  assert.match(html, /settlement is shown only after successful transfer receipt verification/);
   assert.match(html, /Separate from Project Funds or future funding/);
   const source = readFileSync(new URL('../app/components/genesis-project.tsx', import.meta.url), 'utf8');
-  assert.doesNotMatch(source, /build-progress-preview|preview-data|agentAssociation|\.applications/);
+  assert.doesNotMatch(source, /build-progress-preview|preview-data|fixtures|CrewAndContributions|agentAssociation|\.applications/);
 });
 
 test('completed project retains creator, participant and Steward workspaces below public content', () => {

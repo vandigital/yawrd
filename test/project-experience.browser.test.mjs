@@ -118,7 +118,7 @@ root.render(<App />);
       scopedCss += '\n' + parsed.toString();
     }
     const reviewCss = '.fixture-notice{padding:8px 16px;background:#a9f1e9;color:#002026;font:11px/1.6 system-ui}.review-page{min-height:100svh;background:radial-gradient(ellipse at 90% 0,#07413f70,transparent 45%),#001819;color:#f2f7f5}.review-container{width:min(1240px,calc(100% - 64px));margin-inline:auto;padding-bottom:32px}@media(max-width:639px){.review-container{width:calc(100% - 32px)}}';
-    const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>09A.2 · Offline product review</title><style>${utilityCss}\n${scopedCss}\n${reviewCss}</style></head><body><div id="root"></div><script>window.__nextNavigation={usePathname:()=>'/yawrd/yaw-001'};window.__errors=[];addEventListener('error',e=>window.__errors.push(e.message));window.__nextLink=props=>window.React.createElement('a',props,props.children);</script><script src="/bundle.js"></script></body></html>`;
+    const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>YAW-001 · Build Progress integration review</title><style>${utilityCss}\n${scopedCss}\n${reviewCss}</style></head><body><div id="root"></div><script>window.__nextNavigation={usePathname:()=>'/yawrd/yaw-001'};window.__errors=[];addEventListener('error',e=>window.__errors.push(e.message));window.__nextLink=props=>window.React.createElement('a',props,props.children);</script><script src="/bundle.js"></script></body></html>`;
     server = createServer(async (req, res) => {
       if (req.url === '/bundle.js') { res.setHeader('content-type', 'text/javascript'); res.end(bundle); }
       else if (req.url === '/') { res.setHeader('content-type', 'text/html'); res.end(html); }
@@ -156,7 +156,7 @@ root.render(<App />);
     await call('Page.enable'); await call('Runtime.enable'); await call('Fetch.enable', { patterns: [{ urlPattern: '*' }] });
     await call('Page.navigate', {url: origin});
     await waitFor('!!window.setRole && document.body.textContent.includes("Approved — transfer settlement unverified")');
-    const artifactDir = resolve('docs/verification/milestone-09a-2');
+    const artifactDir = resolve('docs/verification/yaw-001-build-progress-integration');
     await mkdir(artifactDir, {recursive:true});
     for (const width of [320,390,768,1440]) {
       await call('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:false});
@@ -166,6 +166,12 @@ root.render(<App />);
       assert.equal(await evaluate('document.querySelectorAll("#genesis-identity-title").length'),1);
       assert.equal(await evaluate('document.body.textContent.includes("Completed · Applications closed")'),true);
       assert.equal(await evaluate('document.body.textContent.includes("Apply to Join")'),false);
+      assert.equal(await evaluate('document.querySelectorAll(\'[aria-label="Project Progress"]\').length'),1);
+      assert.equal(await evaluate('document.querySelector(\'[aria-label="Crew and contributions"]\')'),null);
+      assert.equal(await evaluate('document.body.textContent.includes("2/2deliverables accepted") || document.body.textContent.includes("2/2 deliverables accepted")'),true);
+      assert.equal(await evaluate('document.body.textContent.includes("Proof of Contribution")'),true);
+      assert.equal(await evaluate('document.body.textContent.includes("Accepted on 2026-11-06")'),true);
+      assert.equal(await evaluate('document.body.textContent.includes("Acceptance date not published in the approved evidence")'),true);
       const layout=await evaluate(`(()=>{
         const title=document.querySelector('h1').getBoundingClientRect(),identity=document.querySelector('aside[aria-label="Project identity and participation"]').getBoundingClientRect(),overview=document.querySelector('[aria-labelledby="genesis-source-title"]').getBoundingClientRect();
         return {titleTop:title.top,identityTop:identity.top,identityLeft:identity.left,overviewTop:overview.top,overviewLeft:overview.left};
@@ -174,7 +180,7 @@ root.render(<App />);
       else assert.ok(layout.identityLeft>layout.overviewLeft && layout.identityTop<layout.overviewTop,'two columns '+width);
       assert.equal(await evaluate(`document.body.innerText.includes(${JSON.stringify('GGvuLJcNNEQseQT4LE5uan7apN9gk7ff3WbEHZ4UKip')})`),false,'hash hidden initially');
       const publicText=await evaluate('document.querySelector("#project-content").innerText');
-      assert.doesNotMatch(publicText,/OFFLINE PRIVATE|offline-crew|keelbase1|hermes|synthetic|recent activity/);
+      assert.doesNotMatch(publicText,/OFFLINE PRIVATE|offline-crew|keelbase1|hermes|synthetic|example\.invalid/);
       const mountsBefore=await evaluate('window.payoutMounts');
       for(const summary of ['Project details & on-chain evidence','Original objectives & project context','Reward verification']) {
         const expression=`[...document.querySelectorAll('main summary')].find(s=>s.textContent===${JSON.stringify(summary)})`;
