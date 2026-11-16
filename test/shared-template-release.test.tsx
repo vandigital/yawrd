@@ -33,7 +33,7 @@ test('Genesis markup is byte-identical to the verified Production baseline and s
 test('WordWake uses its own reviewed Blueprint/task summaries in the approved shared shell',async()=>{
   let query='';const project=await publicWordWake(async sql=>{query=sql;return [publicWordWakeRow()];});
   const html=renderToStaticMarkup(<PersistedYawrdContent project={project!}/>);
-  for(const expected of ['YAW-002','WordWake','yawrd1.testnet','Published on Testnet','Join applications open','The Blueprint','Eight-neighbor adjacency','Puzzle engine + reference puzzle','Player experience + two additional puzzles','0/2','Not activated','Closed to claiming'])assert.ok(html.includes(expected),expected);
+  for(const expected of ['YAW-002','WordWake','yawrd1.testnet','Published on Testnet','Join applications open','The Blueprint','Eight-neighbor adjacency','Puzzle engine + reference puzzle','Player experience + two additional puzzles','0/2','Not activated','Claiming closed'])assert.ok(html.includes(expected),expected);
   assert.doesNotMatch(html,/Genesis project|Task B · Recorded reward|Proof of Contribution|Reviewed PR|1 NEAR on Testnet<|T1-AC1|SKILL\.md|TASKS\.json/);
   assert.match(query,/review\.snapshot_sha256=pkg\.snapshot_sha256/);assert.match(query,/pkg\.review_record_sha256=\$5/);
   assert.match(query,/p\.published_at IS NOT NULL/);assert.doesNotMatch(query,/SELECT\s+(pkg\.snapshot|\*)\b/);
@@ -82,7 +82,7 @@ test('reward projection reads only latest approved snapshot-bound terms and retu
   assert.equal(await publicWordWakeRewards(async()=>[],snapshot),null);
   const project=(await publicWordWake(async()=>[publicWordWakeRow()]))!;
   const html=renderToStaticMarkup(<PersistedYawrdContent project={{...project,rewardPlan:result}}/>);
-  assert.equal(html.split('Approved task reward: 1 Testnet NEAR').length-1,2);assert.match(html,/2 Testnet NEAR/);
+  assert.equal(html.split('>Approved reward</p>').length-1,2);assert.equal(html.split('>1 Testnet NEAR</p>').length-1,2);assert.match(html,/2 Testnet NEAR/);assert.match(html,/2 reviewed tasks · 1 Testnet NEAR each/);assert.match(html,/<summary>Reward plan details<\/summary>/);assert.equal(html.split('Unassigned · Claiming closed').length-1,2);
 });
 test('auth diagnosis never serializes raw error details and origin failure performs no database work',async()=>{
   assert.equal(authFailureCategory(Object.assign(Error('postgresql://PRIVATE'),{code:'42501',detail:'PRIVATE'})),'database_42501');
