@@ -9,6 +9,7 @@ import { SESSION_COOKIE, sessionHash } from "../../../src/participants/auth";
 import { PersistedYawrdPresentation } from "../../components/persisted-yawrd";
 import createStyles from "../../create/create.module.css";
 import { verifiedContributionActivation, contributionsActive } from "../../../src/contributions/policy";
+import { publicWordWake } from '../../../src/launch/wordwake-public';
 
 type Props = { params: Promise<{ projectId: string }> };
 
@@ -16,13 +17,29 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const fixture = getPublicYawrd((await params).projectId);
+  const id = (await params).projectId;
+  if (id === 'yaw-002') {
+    const project = await publicWordWake(database).catch(() => null);
+    return project ? { title: `${project.name} · Yawrd`, description: project.description }
+      : { title: 'Yawrd project space', robots: { index: false, follow: false } };
+  }
+  const fixture = getPublicYawrd(id);
   // Never query restricted data or render unpublished names in metadata.
   return { title: fixture ? `${fixture.name} · Yawrd preview` : "Yawrd project space", robots: { index: false, follow: false } };
 }
 
 export default async function PublicYawrdPage({ params }: Props) {
   const { projectId } = await params;
+  if (projectId === 'yaw-002') {
+    const published = await publicWordWake(database).catch(() => null);
+    if (published) {
+      const view = await new ParticipantRepository(database).view(projectId, sessionHash((await cookies()).get(SESSION_COOKIE)?.value ?? null));
+      return <main id="project-content" className={createStyles.page}><div className={createStyles.container}>
+        <PersistedYawrdPresentation project={published} view={view} contributionsActive={false} />
+      </div></main>;
+    }
+    notFound();
+  }
   const project = getPublicYawrd(projectId);
   let persisted = null;
   let view = null;

@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { publicWordWake } from '../src/launch/wordwake-public';
+import { database } from '../src/participants/database';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: "Yawrd · The place to build",
@@ -35,7 +39,8 @@ const journey = [
   { title: "Reward", description: "Fund contributors transparently." },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const wordwake = await publicWordWake(database).catch(() => null);
   return <div className="landing-page">
     <a href="#main-content" className="landing-skip">Skip to content</a>
     <div aria-hidden="true" className="landing-dockyard" />
@@ -78,6 +83,14 @@ export default function LandingPage() {
           <Link href="/yawrd/yaw-001" className="landing-primary landing-github">Explore this Yawrd <Arrow /></Link>
         </div>
       </section>
+
+      {wordwake && <section aria-labelledby="wordwake-title" className="landing-discover landing-container">
+        <div className="landing-feature-copy"><p className="landing-eyebrow">Open for Join applications · Testnet</p>
+          <h2 id="wordwake-title">WordWake</h2><p className="landing-feature-description">{wordwake.description}</p>
+          <p className="landing-feature-description">Applications need founder approval. Tasks remain closed to claiming.</p>
+          <Link href="/yawrd/yaw-002" className="landing-primary">Explore WordWake <Arrow /></Link>
+        </div>
+      </section>}
 
       <section aria-labelledby="journey-title" className="landing-journey landing-container">
         <div className="landing-journey-heading">
