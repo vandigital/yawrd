@@ -3,7 +3,7 @@ import { GENESIS_YAW_001 as genesis } from '../../src/genesis/yaw-001';
 import { genesisApplicationsClosed } from '../../src/genesis/participation';
 import { TASK_B_REWARD } from '../../src/genesis/task-b-reward';
 import { YAW_001_CONTRIBUTION_PROOF, YAW_001_DELIVERABLE_COMPLETION, YAW_001_PROJECT_PROGRESS } from '../../src/genesis/build-progress-publication';
-import { ProjectProgress } from '../../components/ProjectProgress';
+import { BuildProgressSection } from './build-progress-section';
 import { YawrdAvatar, YawrdBrandIcon } from './buoy-mark';
 import { ProjectCover } from './project-presentation';
 import { ProjectDeliverableCard, ProjectSpaceShell } from './project-space-shell';
@@ -107,12 +107,8 @@ export function GenesisProjectPresentation({ project }: { project: PersistedProj
             actions={<><a href={item.prUrl}>Reviewed PR ↗</a><a href={item.mergeUrl}>Merged source ↗</a></>}
           />)}
         </div>
-        <div className={styles.progressBlock}>
-          <div className={styles.sectionHeading}><div><p className={styles.sectionKicker}>Server-published snapshot</p><h2 id="published-progress-title">Build Progress</h2></div><span>Evidence-backed</span></div>
-          {/* Host adapter only: the accepted public component remains byte-for-byte unchanged. */}
-          <div className={styles.progressAdapter}><ProjectProgress data={YAW_001_PROJECT_PROGRESS} /></div>
-          <p className={styles.progressNote}>Task A is accepted, but its acceptance date is not published in the approved evidence. Its merge date is not used as a substitute.</p>
-        </div>
+        {/* Host adapter only: the accepted public component remains byte-for-byte unchanged. */}
+        <BuildProgressSection data={YAW_001_PROJECT_PROGRESS} note="Task A is accepted, but its acceptance date is not published in the approved evidence. Its merge date is not used as a substitute." />
       </section>
 
       <section aria-labelledby="proof-of-contribution-title" className={styles.contributions} id="proof-of-contribution">
