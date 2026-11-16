@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
+import { DiscoveryCarousel, type DiscoveryProject } from "./components/discovery-carousel";
 import { publicWordWake } from '../src/launch/wordwake-public';
 import { database } from '../src/participants/database';
 
@@ -24,14 +24,6 @@ function Brand() {
   </a>;
 }
 
-const plannedFeatures = [
-  { label: "Published milestones", path: "M4 17v-5m5 5V7m5 10V3m4 14V9" },
-  { label: "Public task statuses", path: "M3 3h14v14H3zM6 10l3 3 5-6" },
-  { label: "Accepted contributions", path: "M8 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5 8v-2c0-4 10-4 10 0v2H3Zm11-9a2.5 2.5 0 1 0 0-5m2 9c2 0 3 1 3 3v2h-3" },
-  { label: "Contributor profiles", path: "M10 9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm-7 9v-2c0-6 14-6 14 0v2H3Z" },
-  { label: "Agent identities", path: "M10 1c0 6-3 9-9 9 6 0 9 3 9 9 0-6 3-9 9-9-6 0-9-3-9-9Z" },
-];
-
 const journey = [
   { title: "Open", description: "Describe the Yawrd, the build, and the rules." },
   { title: "Recruit", description: "Invite people and agents into your Yawrd." },
@@ -40,7 +32,11 @@ const journey = [
 ];
 
 export default async function LandingPage() {
-  const wordwake = await publicWordWake(database).catch(() => null);
+  const [wordwake,genesis] = await Promise.all([publicWordWake(database).catch(()=>null),
+    database("SELECT id FROM yawrd.projects WHERE network='testnet' AND id='yaw-001' AND creator_account_id='yawrd1.testnet' AND dao_account_id='demo.factory.yawrd.testnet' AND published_at IS NOT NULL").catch(()=>[])]);
+  const projects: DiscoveryProject[] = [];
+  if(genesis.length===1)projects.push({id:'yaw-001',name:'Build Progress',description:'Two accepted deliverables. Follow the completed Genesis build and its public contribution history.',status:'Completed · Applications closed',image:'/landing/build-progress.webp'});
+  if(wordwake)projects.push({id:'yaw-002',name:wordwake.name,description:wordwake.description,status:'Join applications open · Tasks not activated',image:'/brand/yawrd-buoy.webp'});
   return <div className="landing-page">
     <a href="#main-content" className="landing-skip">Skip to content</a>
     <div aria-hidden="true" className="landing-dockyard" />
@@ -60,37 +56,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      <section id="discover" aria-labelledby="discover-title" className="landing-discover landing-container" tabIndex={-1}>
-        <div className="landing-feature-art">
-          <Image src="/landing/build-progress.webp" alt="" width={367} height={180} unoptimized />
-        </div>
-        <div className="landing-feature-copy">
-          <p className="landing-eyebrow">Featured Yawrd</p>
-          <h2 id="discover-title">YAW-001 <span className="landing-title-divider" aria-hidden="true">|</span> <span>Build Progress</span></h2>
-          <p className="landing-feature-tagline">Building Yawrd, together.</p>
-          <p className="landing-feature-description">A planned public, read-only look at our progress. Follow the build on GitHub while these features take shape.</p>
-        </div>
-        <div className="landing-feature-details">
-          <div>
-            <p className="landing-planned">Planned functionality</p>
-            <ul className="landing-features">
-              {plannedFeatures.map(feature => <li key={feature.label}>
-                <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d={feature.path} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                {feature.label}
-              </li>)}
-            </ul>
-          </div>
-          <Link href="/yawrd/yaw-001" className="landing-primary landing-github">Explore this Yawrd <Arrow /></Link>
-        </div>
-      </section>
-
-      {wordwake && <section aria-labelledby="wordwake-title" className="landing-discover landing-container">
-        <div className="landing-feature-copy"><p className="landing-eyebrow">Open for Join applications · Testnet</p>
-          <h2 id="wordwake-title">WordWake</h2><p className="landing-feature-description">{wordwake.description}</p>
-          <p className="landing-feature-description">Applications need founder approval. Tasks remain closed to claiming.</p>
-          <Link href="/yawrd/yaw-002" className="landing-primary">Explore WordWake <Arrow /></Link>
-        </div>
-      </section>}
+      <DiscoveryCarousel projects={projects}/>
 
       <section aria-labelledby="journey-title" className="landing-journey landing-container">
         <div className="landing-journey-heading">

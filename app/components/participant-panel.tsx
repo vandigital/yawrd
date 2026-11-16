@@ -14,6 +14,9 @@ const button = projectButton;
 const messages: Record<string, string> = {
   applications_closed: 'This Yawrd is complete. Applications are closed.',
   service_unavailable: 'Yawrd could not reach its verification or storage service. Please try again. Access has not been granted.',
+  wrong_origin: 'This Preview address does not match the configured sign-in origin. Ask the founder to confirm the branch-specific HTTPS origin, then reload and prepare a fresh challenge.',
+  rpc_unavailable: 'Testnet wallet verification is temporarily unavailable. Prepare a fresh sign-in challenge when the service recovers.',
+  rpc_verification_failed: 'Testnet verification could not be confirmed. Prepare a new sign-in challenge.',
   sign_in_required: 'Your sign-in has expired. Verify your wallet again to continue.',
   decision_conflict: 'This application already has a different final decision. Refresh to see the recorded result.',
   creator_only: 'Only the verified creator can review applications.',

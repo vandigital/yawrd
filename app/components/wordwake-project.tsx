@@ -23,7 +23,7 @@ export function WordWakeProjectPresentation({project}:{project:PublishedWordWake
           <a href={`https://testnet.nearblocks.io/address/${project.creatorAccountId}`}>{project.creatorAccountId} ↗</a></div></div>
         <div className={styles.participation}><p>Published · Accepting Join applications</p><p className={styles.note}>The founder reviews every application. Tasks remain unassigned and closed to claiming.</p>
           <a className={styles.follow} href="#crew-title">Join &amp; applications <span aria-hidden="true">↓</span></a></div>
-        <section className={styles.reward}><h3 className={styles.muted}>Approved reward plan</h3><p className={styles.amount}>2 Testnet NEAR</p><p className={styles.note}>{project.rewards}</p>
+        <section className={styles.reward}><h3 className={styles.muted}>Approved reward plan</h3><p className={styles.amount}>{project.rewardPlan ? `${project.rewardPlan.total} Testnet NEAR` : 'Allocation verification unavailable'}</p><p className={styles.note}>{project.rewards}</p>
           <p className={styles.note}>No rewards have been paid for these tasks. Current Project Funds are verified separately in the founder workspace.</p></section>
         <section className={styles.governance}><h3 className={styles.muted}>Project decisions</h3><p>Reward release needs separate approval from two distinct Stewards. Joining does not give spending or task-claiming permission.</p></section>
         <details className={styles.details}><summary>Project details &amp; review evidence</summary><div className={styles.detailBody}>
@@ -40,7 +40,7 @@ export function WordWakeProjectPresentation({project}:{project:PublishedWordWake
       </section>
       <section id="deliverables" className={styles.deliverables} aria-labelledby="wordwake-deliverables-title"><div className={styles.sectionHeading}><div><p className={styles.sectionKicker}>Planned work</p><h2 id="wordwake-deliverables-title">What we’ll build together</h2></div><span>0 of 2 accepted · Tasks not activated</span></div>
         <div className={styles.deliverableGrid}>{project.reviewed.tracks.map(track=><ProjectDeliverableCard key={track.id} id={`wordwake-${track.id}`} label={track.id} title={track.title} summary={track.summary} status="Not activated"
-          meta={<><p>Unassigned · Closed to claiming</p><p>No accepted contribution or payout.</p></>} actions={<span className={styles.note}>Contributor assignment requires a separate founder decision.</span>}/>)}</div>
+          meta={<><p>Unassigned · Closed to claiming</p><p>{project.rewardPlan ? `Approved task reward: ${project.rewardPlan[track.id]} Testnet NEAR` : 'Task reward verification unavailable'}</p><p>No accepted contribution or payout.</p></>} actions={<span className={styles.note}>Contributor assignment requires a separate founder decision.</span>}/>)}</div>
       </section>
       <section className={styles.overview} aria-labelledby="wordwake-participation-title"><p className={styles.sectionKicker}>People &amp; agents</p><h2 id="wordwake-participation-title">Join the Crew</h2><p>{project.participation}</p>
         <p className={styles.note}>You can read this page without a wallet or GitHub connection. Applying needs a verified Testnet wallet and your consent to share your introduction with the founder.</p></section>

@@ -1,3 +1,4 @@
+import { publicWordWakeRewards, type PublicRewards } from './wordwake-public-rewards.ts';
 import 'server-only';
 import type { Query } from '../participants/database.ts';
 import type { PersistedProject } from '../participants/types.ts';
@@ -5,14 +6,14 @@ import { WORDWAKE_PUBLIC_IDENTITY as project, WORDWAKE_PUBLIC_REVIEW as trust, P
 import { fail } from '../participants/repository.ts';
 
 export type PublishedWordWake = PersistedProject & {
-  publishedAt: string;
+  publishedAt: string; rewardPlan: PublicRewards | null;
   reviewed: { packageVersion: string; contractVersion: string; reviewedOn: string;
     principles: string[]; tracks: { id: 'T1' | 'T2'; title: string; summary: string }[] };
 };
 
 /** Public summaries only. Full documents, intake, Skill and task definitions never enter this result. */
 export async function publicWordWake(query: Query): Promise<PublishedWordWake | null> {
-  const rows = await query(`SELECT p.id,p.published_at,pkg.package_version,pkg.contract_version,
+  const rows = await query(`SELECT p.id,p.published_at,pkg.snapshot_sha256,pkg.package_version,pkg.contract_version,
     pkg.snapshot#>>'{package,record,review,recordedOn}' AS reviewed_on,
     pkg.snapshot#>'{package,record,review,approvedDefaults}' AS principles,
     pkg.snapshot#>>'{package,record,taskPresentation,T1,label}' AS t1_title,
@@ -37,9 +38,11 @@ export async function publicWordWake(query: Query): Promise<PublishedWordWake | 
     && typeof row.reviewed_on==='string' && /^\d{4}-\d{2}-\d{2}$/.test(row.reviewed_on)
     && Array.isArray(row.principles) && row.principles.length>0 && row.principles.length<=20 && row.principles.every(shortText)
     && [row.t1_title,row.t1_summary,row.t2_title,row.t2_summary].every(shortText), 'public_review_unavailable',503);
+  const rewardPlan = await publicWordWakeRewards(query,row.snapshot_sha256);
   return { id: project.id, network: 'testnet', creatorAccountId: project.founderAccountId,
+    rewardPlan,
     name: project.name, description: project.description, objectives: [...project.objectives],
-    participation: PUBLIC_PARTICIPATION, rewards: PUBLIC_REWARDS, publishedAt,
+    participation: PUBLIC_PARTICIPATION, rewards: rewardPlan ? `The founder approved ${rewardPlan.total} Testnet NEAR across two reviewed tasks. Accepted work and separate Steward approval are required before payout.` : 'Current reward terms could not be verified. No allocation or payment is confirmed here.', publishedAt,
     reviewed: { packageVersion:trust.packageVersion,contractVersion:trust.contractVersion,reviewedOn:row.reviewed_on,
       principles:[...row.principles as string[]],tracks:[
         {id:'T1',title:row.t1_title as string,summary:row.t1_summary as string},

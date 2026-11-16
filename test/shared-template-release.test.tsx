@@ -64,3 +64,37 @@ test('public projection keeps extra database fields private and enforces the fix
     assert.ok(statement.includes(binding), binding);
   assert.equal(await publicWordWake(async () => [publicWordWakeRow(), publicWordWakeRow()]), null);
 });
+
+import { publicWordWakeRewards } from '../src/launch/wordwake-public-rewards.ts';
+import { authFailureCategory, authRequest } from '../src/participants/http.ts';
+import { PersistentAuth } from '../src/participants/auth.ts';
+import { DiscoveryCarousel } from '../app/components/discovery-carousel.tsx';
+test('reward projection reads only latest approved snapshot-bound terms and returns just allocations', async()=>{
+  const snapshot='a'.repeat(64), row={revision:1,total:'2000000000000000000000000',t1:'1000000000000000000000000',t2:'1000000000000000000000000'};
+  const result=await publicWordWakeRewards(async(sql,params)=>{
+    assert.deepEqual(params,[snapshot,'yaw-002-wordwake-ww-v1-r1']);
+    for(const guard of ['ORDER BY revision DESC LIMIT 1','r.snapshot_sha256=$1','r.approved_by=','r.terms_sha256=encode','wordwake_reward_allocations',"'taskId'"])assert.ok(sql.includes(guard));
+    assert.doesNotMatch(sql,/INSERT|UPDATE|DELETE/);return [{...row,terms_text:'PRIVATE REWARD RECORD'}];
+  },snapshot);
+  assert.deepEqual(result,{revision:1,total:'2',T1:'1',T2:'1'});
+  for(const bad of [{...row,t2:'2'}, {...row,revision:0},{...row,t1:'-1'}]) assert.equal(await publicWordWakeRewards(async()=>[bad],snapshot),null);
+  assert.equal(await publicWordWakeRewards(async()=>{throw Error('private connection');},snapshot),null);
+  assert.equal(await publicWordWakeRewards(async()=>[],snapshot),null);
+  const project=(await publicWordWake(async()=>[publicWordWakeRow()]))!;
+  const html=renderToStaticMarkup(<PersistedYawrdContent project={{...project,rewardPlan:result}}/>);
+  assert.equal(html.split('Approved task reward: 1 Testnet NEAR').length-1,2);assert.match(html,/2 Testnet NEAR/);
+});
+test('auth diagnosis never serializes raw error details and origin failure performs no database work',async()=>{
+  assert.equal(authFailureCategory(Object.assign(Error('postgresql://PRIVATE'),{code:'42501',detail:'PRIVATE'})),'database_42501');
+  assert.equal(authFailureCategory(Error('PRIVATE SECRET')),'verification_or_storage_unavailable');
+  const reports:unknown[]=[];
+  const auth=new PersistentAuth(async()=>{assert.fail('No origin: must not query database');},async()=>{assert.fail('No RPC');});
+  const response=await authRequest(new Request('https://preview.example/api/auth/challenge',{method:'POST',headers:{host:'preview.example',origin:'https://preview.example','content-type':'application/json'},body:'{}'}),'challenge',auth,null,x=>reports.push(x));
+  assert.equal(response.status,503);assert.deepEqual(reports,[{stage:'origin',category:'origin_configuration_unavailable'}]);
+  assert.deepEqual(await response.json(),{error:'service_unavailable'});
+});
+test('discovery is compact, navigable, and quiet when no published projects are eligible',()=>{
+  assert.equal(renderToStaticMarkup(<DiscoveryCarousel projects={[]}/>),'');
+  const html=renderToStaticMarkup(<DiscoveryCarousel projects={[{id:'yaw-001',name:'Build Progress',status:'Completed · Applications closed',description:'Accepted work',image:'/landing/build-progress.webp'},{id:'yaw-002',name:'WordWake',status:'Join applications open · Tasks not activated',description:'Reviewed work',image:'/brand/yawrd-buoy.webp'}]}/>);
+  for(const expected of ['carousel','Previous Yawrd','Next Yawrd','Completed','Tasks not activated','/yawrd/yaw-002'])assert.ok(html.includes(expected));
+});

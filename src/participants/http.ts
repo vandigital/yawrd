@@ -74,14 +74,27 @@ export async function authSessionRequest(request: Request, query: Query, origin:
   } catch (error) { return errorResponse(error); }
 }
 
-export async function authRequest(request: Request, action: string, auth: PersistentAuth, origin: string | null) {
+export type AuthFailure = { stage: string; category: string };
+export function authFailureCategory(error: unknown): string {
+  if (error instanceof WorkflowError) return error.code === 'service_unavailable' ? 'origin_configuration_unavailable' : 'request_rejected';
+  if (error instanceof IdentityError) return 'identity_verification_rejected';
+  const code = (error as { code?: unknown })?.code;
+  if (typeof code === 'string' && ['42501','42P01','42703','23503','23505','53300','57P01','08001','08006'].includes(code)) return 'database_' + code;
+  if (error instanceof Error && ['database_unavailable','database_configuration_conflict'].includes(error.message)) return error.message;
+  return 'verification_or_storage_unavailable';
+}
+export async function authRequest(request: Request, action: string, auth: PersistentAuth, origin: string | null,
+  reportFailure: (failure: AuthFailure) => void = () => {}) {
+  let stage = 'origin';
   try {
     fail(request.method === 'POST', 'method_not_allowed', 405);
     sameOrigin(request, origin);
+    stage = 'request';
     const data = await body(request);
     const previousHash = sessionHash(cookie(request, SESSION_COOKIE));
     if (action === 'logout') {
       fields(data, []);
+      stage = 'logout';
       await auth.logout(previousHash);
       const response = json({ signedOut: true });
       response.headers.append('Set-Cookie', cookieHeader(SESSION_COOKIE, '', 0));
@@ -92,6 +105,7 @@ export async function authRequest(request: Request, action: string, auth: Persis
       fields(data, ['accountId', 'network']);
       fail(typeof data.accountId === 'string' && typeof data.network === 'string', 'invalid_request');
       const browserToken = cookie(request, BROWSER_COOKIE) ?? opaqueToken();
+      stage = 'challenge_storage';
       const challenge = await auth.issue(data.accountId, data.network, origin!, browserToken);
       const response = json({ challenge });
       response.headers.append('Set-Cookie', cookieHeader(BROWSER_COOKIE, browserToken, 300));
@@ -106,12 +120,16 @@ export async function authRequest(request: Request, action: string, auth: Persis
     fail(typeof p.accountId === 'string' && typeof p.publicKey === 'string' && typeof p.signature === 'string', 'invalid_request');
     const browserToken = cookie(request, BROWSER_COOKIE);
     fail(browserToken, 'unknown_challenge', 401);
+    stage = 'signed_message_verification';
     const result = await auth.verify(data.challengeId, browserToken, data.accountId, data.network, origin!, { accountId: p.accountId, publicKey: p.publicKey, signature: p.signature }, previousHash);
     const response = json({ accountId: result.accountId, network: result.network, expiresIn: SESSION_SECONDS });
     response.headers.append('Set-Cookie', cookieHeader(SESSION_COOKIE, result.token, SESSION_SECONDS));
     response.headers.append('Set-Cookie', cookieHeader(BROWSER_COOKIE, '', 0));
     return response;
-  } catch (error) { return errorResponse(error); }
+  } catch (error) {
+    try { reportFailure({ stage, category: authFailureCategory(error) }); } catch { /* Diagnostics cannot change authorization. */ }
+    return errorResponse(error);
+  }
 }
 export async function participantRequest(request: Request, id: string, action: string, repo: ParticipantRepository, origin: string | null) {
   try {

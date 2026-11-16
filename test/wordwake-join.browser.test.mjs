@@ -13,6 +13,7 @@ test('C5 Join UI: anonymous viewing, application consent, pending, founder decis
   const origin='http://localhost:4317',dir=await mkdtemp('/tmp/yawrd-c5-join-'),slug='c5-join-fixture-'+Date.now();
   const fixtureDir='app/dev/'+slug,fixturePath=fixtureDir+'/page.tsx';
   const project=await publicWordWake(async()=>[publicWordWakeRow()]);
+  project.rewardPlan={revision:1,total:'2',T1:'1',T2:'1'};
   const empty={accountId:null,role:'public',application:null,applications:[],restrictedContent:null};
   await mkdir(fixtureDir);await writeFile(fixturePath,`import {notFound} from 'next/navigation';
 import {headers} from 'next/headers';
@@ -82,7 +83,7 @@ export default async function Fixture({searchParams}){if(process.env.NODE_ENV!==
     console.log(JSON.stringify({sharedTemplateMetrics:metrics,content:'synthetic public records; actual candidate Next components and CSS'}));
     await wait(`document.body.innerText.includes('Sign in to take part')`);
     await wait(`Object.keys([...document.querySelectorAll('button')].find(b=>b.textContent==='Refresh status')).some(k=>k.startsWith('__reactProps'))`);
-    assert.match(await text(),/WordWake/);assert.match(await text(),/closed to claiming/);assert.doesNotMatch(await text(),/PRIVATE CREW INFORMATION|crew-two.testnet|TASKS.json|SKILL.md/);
+    assert.match(await text(),/WordWake/);assert.equal((await text()).split('Approved task reward: 1 Testnet NEAR').length-1,2);assert.match(await text(),/closed to claiming/);assert.doesNotMatch(await text(),/PRIVATE CREW INFORMATION|crew-two.testnet|TASKS.json|SKILL.md/);
     for(const width of [1440,768,390]){await call('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:false});await delay(80);assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);}
     role='applicant';await click('Refresh status');await wait(`!!document.querySelector('textarea')`);
     assert.equal(await evaluate(`[...document.querySelectorAll('button')].find(b=>b.textContent==='Apply to Join').disabled`),true);

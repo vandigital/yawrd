@@ -44,6 +44,7 @@ import React from 'react';
 import {createRoot} from 'react-dom/client';
 import {NavigationShell} from ${JSON.stringify(resolve('app/components/global-navigation.tsx'))};
 import {ParticipantPanel} from ${JSON.stringify(resolve('app/components/participant-panel.tsx'))};
+import {DiscoveryCarousel} from ${JSON.stringify(resolve('app/components/discovery-carousel.tsx'))};
 import {TestnetWalletProvider, useTestnetWallet} from ${JSON.stringify(resolve('app/use-testnet-wallet.ts'))};
 window.React = React;
 window.__nextNavigation = {usePathname: () => '/yawrd/example'};
@@ -71,7 +72,7 @@ window.fetch = async (url, options={}) => {
 };
 const root = createRoot(document.getElementById('root'));
 function Observer() { const wallet=useTestnetWallet(); window.latestWallet=wallet; return null; }
-function App() { const [show,setShow]=React.useState(true); window.swap=()=>setShow(s=>!s); return <TestnetWalletProvider><NavigationShell><Observer />{show ? <ParticipantPanel projectId="example" initial={view()} /> : <main>Other route consumer</main>}</NavigationShell></TestnetWalletProvider>; }
+function App() { const [show,setShow]=React.useState(true); window.swap=()=>setShow(s=>!s); return <TestnetWalletProvider><NavigationShell><DiscoveryCarousel projects={[{id:"yaw-001",name:"Build Progress",status:"Completed",description:"Accepted work",image:""},{id:"yaw-002",name:"WordWake",status:"Join open",description:"Reviewed tasks",image:""}]}/><Observer />{show ? <ParticipantPanel projectId="example" initial={view()} /> : <main>Other route consumer</main>}</NavigationShell></TestnetWalletProvider>; }
 root.render(<App />);
 `;
     await writeFile(temporary + '/entry.tsx', entry);
@@ -92,8 +93,9 @@ root.render(<App />);
 
     const bundle = await readFile(temporary + '/bundle.js');
     const utilityCss = (await Promise.all((await readdir('.next/static/css')).map(file => readFile('.next/static/css/' + file, 'utf8')))).join('\n');
+    const carouselCss = await readFile('app/components/discovery-carousel.module.css','utf8');
     const navCss = await readFile('app/components/global-navigation.module.css', 'utf8');
-    const html = `<!doctype html><meta charset="utf-8"><style>${utilityCss}\n${navCss}</style><div id="root"></div><script>window.__nextNavigation={usePathname:()=>'/yawrd/example'};window.__nextLink=props=>window.React.createElement('a',props,props.children);</script><script src="/bundle.js"></script>`;
+    const html = `<!doctype html><meta charset="utf-8"><style>${utilityCss}\n${navCss}\n${carouselCss}</style><div id="root"></div><script>window.__nextNavigation={usePathname:()=>'/yawrd/example'};window.__nextLink=props=>window.React.createElement('a',props,props.children);</script><script src="/bundle.js"></script>`;
     server = createServer((req, res) => {
       if (req.url === '/bundle.js') { res.setHeader('content-type', 'text/javascript'); res.end(bundle); }
       else if (req.url === '/') { res.setHeader('content-type', 'text/html'); res.end(html); }
@@ -134,6 +136,21 @@ root.render(<App />);
     await call('Page.navigate', { url: origin });
 
     await waitFor('!!window.latestWallet?.ready && !!document.getElementById("project-wallet")');
+    await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+    await evaluate("document.querySelector('[aria-label=\"Next Yawrd\"]').click()");
+    await waitFor("document.activeElement.textContent.includes('WordWake')");
+    await call('Input.dispatchKeyEvent',{type:'keyDown',key:'ArrowLeft',code:'ArrowLeft'});
+    await waitFor("document.activeElement.textContent.includes('Build Progress')");
+    for(const width of [390,1440]) {
+      await call('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:false});
+      assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true);
+    }
+    await call('Emulation.setDeviceMetricsOverride',{width:390,height:900,deviceScaleFactor:1,mobile:true});
+    await call('Emulation.setTouchEmulationEnabled',{enabled:true});
+    const rect=await evaluate("(()=>{const r=document.querySelector('[aria-roledescription=carousel]').getBoundingClientRect();return {x:r.x+Math.min(r.width-20,300),y:r.y+80}})()");
+    await call('Input.synthesizeScrollGesture',{x:rect.x,y:rect.y,xDistance:-300,yDistance:0,gestureSourceType:'touch'});
+    await waitFor("document.querySelector('[aria-roledescription=carousel]').scrollLeft>0");
+    await call('Emulation.setTouchEmulationEnabled',{enabled:false});
     const click = label => evaluate(`[...document.querySelectorAll('#global-account button')].find(b=>b.textContent===${JSON.stringify(label)}).click()`);
     await evaluate('document.querySelector("#global-account > summary").click()');
     assert.equal(await evaluate('document.querySelectorAll("#global-account button").length'), 2, 'only project controls, no duplicate fallback');
