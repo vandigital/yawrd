@@ -11,7 +11,7 @@ function renderToStaticMarkup(element: Parameters<typeof renderMarkup>[0]) {
 }
 import { createElement } from 'react';
 import { PersistentAuth, AUTH_RECIPIENT, BROWSER_COOKIE, SESSION_COOKIE, hashToken, sessionHash } from '../src/participants/auth.ts';
-import { authRequest, participantRequest, configuredOrigin } from '../src/participants/http.ts';
+import { authSessionRequest, authRequest, participantRequest, configuredOrigin } from '../src/participants/http.ts';
 import { ParticipantRepository } from '../src/participants/repository.ts';
 import { PersistedYawrdPresentation } from '../app/components/persisted-yawrd.tsx';
 import { serializeNep413 } from '../src/identity/nep413.ts';
@@ -332,7 +332,7 @@ test('empty authorized participant information stays quiet, while populated text
   }
 });
 
-const walletUi = { ...initialWalletState, ready: true, available: true, connect() {}, disconnect() {} };
+const walletUi = { ...initialWalletState, termsAccepted: false, ready: true, available: true, connect() {}, disconnect() {} };
 function walletMarkup(wallet = walletUi, view = publicView) {
   return renderToStaticMarkup(createElement(ProjectWalletControls, { wallet, view, busy: false, onPrepare() {}, onSignOut() {}, onSelect() {} }));
 }
@@ -385,4 +385,33 @@ test('Genesis presentation retains original persisted context in disclosures and
   assert.ok(html.includes(`href="https://github.com/${g.publicRepository}"`));
   assert.match(html, /Approval here grants no external access or role in Project Rules/);
   assert.doesNotMatch(html, /Published project space|<textarea|<form/);
+});
+
+
+test('creation session check is read only, excludes invalid sessions and returns no credentials', async () => {
+  const origin = 'https://yawrd.example';
+  const token = 'a'.repeat(43);
+  const request = (cookie = '', method = 'GET', site = 'same-origin') => new Request(origin + '/api/auth/session', {
+    method, headers: { host: 'yawrd.example', cookie, 'sec-fetch-site': site },
+  });
+  let calls = 0;
+  const query: Query = async (sql, values) => {
+    calls++;
+    assert.match(sql, /^SELECT account_id FROM yawrd.sessions/);
+    assert.match(sql, /network = 'testnet' AND revoked_at IS NULL/);
+    assert.match(sql, /expires_at > clock_timestamp\(\)/);
+    assert.deepEqual(values, [hashToken(token)]);
+    return [{ account_id: 'founder.testnet' }];
+  };
+  assert.deepEqual(await (await authSessionRequest(request(), query, origin)).json(), { accountId: null });
+  assert.equal(calls, 0);
+  const result = await authSessionRequest(request(`${SESSION_COOKIE}=${token}`), query, origin);
+  assert.deepEqual(await result.json(), { accountId: 'founder.testnet' });
+  assert.match(result.headers.get('Cache-Control')!, /no-store/);
+  assert.equal(result.headers.get('Set-Cookie'), null);
+  const expired: Query = async () => [];
+  assert.deepEqual(await (await authSessionRequest(request(`${SESSION_COOKIE}=${token}`), expired, origin)).json(), { accountId: null });
+  assert.equal((await authSessionRequest(request('', 'GET', 'cross-site'), query, origin)).status, 403);
+  assert.equal((await authSessionRequest(request('', 'POST'), query, origin)).status, 405);
+  assert.equal(calls, 1);
 });

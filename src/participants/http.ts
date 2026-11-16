@@ -1,3 +1,4 @@
+import type { Query } from "./database.ts";
 import { IdentityError } from '../identity/nep413.ts';
 import { BROWSER_COOKIE, opaqueToken, PersistentAuth, SESSION_COOKIE, SESSION_SECONDS, sessionHash } from './auth.ts';
 import { fail, ParticipantRepository, WorkflowError } from './repository.ts';
@@ -59,6 +60,20 @@ export async function body(request: Request): Promise<Record<string, unknown>> {
   fail(data && typeof data === 'object' && !Array.isArray(data), 'invalid_request');
   return data;
 }
+// Read only: visiting creation never rotates or mints a session.
+export async function authSessionRequest(request: Request, query: Query, origin: string | null) {
+  try {
+    fail(request.method === 'GET', 'method_not_allowed', 405);
+    sameOrigin(request, origin, false);
+    const hash = sessionHash(cookie(request, SESSION_COOKIE));
+    if (!hash) return json({ accountId: null });
+    const [session] = await query(`SELECT account_id FROM yawrd.sessions
+      WHERE token_hash = $1 AND network = 'testnet' AND revoked_at IS NULL
+      AND expires_at > clock_timestamp()`, [hash]);
+    return json({ accountId: session ? String(session.account_id) : null });
+  } catch (error) { return errorResponse(error); }
+}
+
 export async function authRequest(request: Request, action: string, auth: PersistentAuth, origin: string | null) {
   try {
     fail(request.method === 'POST', 'method_not_allowed', 405);

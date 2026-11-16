@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTestnetWallet } from "../use-testnet-wallet";
 import { AccountSlot } from "./route-account-controls";
+import { TestnetConsent } from "./testnet-consent";
 import styles from "./global-navigation.module.css";
 
 function WalletControls() {
@@ -17,10 +18,11 @@ function WalletControls() {
         {wallet.accountIds.map(id => <option key={id}>{id}</option>)}
       </select>
     </label>}
-    <button type="button" disabled={wallet.busy || !wallet.ready || (!wallet.accountId && !wallet.available)} onClick={wallet.accountId ? wallet.disconnect : wallet.connect}>
+    {!wallet.accountId && <TestnetConsent disabled={wallet.busy} />}
+    <button type="button" disabled={(!wallet.accountId && !wallet.termsAccepted) || wallet.busy || !wallet.ready || (!wallet.accountId && !wallet.available)} onClick={wallet.accountId ? wallet.disconnect : wallet.connect}>
       {!wallet.ready ? "Preparing wallet…" : wallet.busy ? "Please wait…" : wallet.accountId ? "Disconnect wallet" : "Connect wallet"}
     </button>
-    <p>Connecting a wallet does not sign you in. Verified account status is available inside a Yawrd.</p>
+    <p>Connecting a wallet does not sign you in. Verify a sign-in message inside a Yawrd or when opening one.</p>
     {wallet.ready && !wallet.available && <p>Meteor is unavailable for Testnet connection.</p>}
     {wallet.error && <p role="alert">{wallet.error}</p>}
   </div>;

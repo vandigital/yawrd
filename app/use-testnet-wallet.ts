@@ -24,6 +24,9 @@ function getConnector(): Promise<NearConnector> {
 
 function useWalletOwner() {
   const [state, setState] = useState(initialWalletState);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const consent = useRef(false);
+  const acceptTerms = useCallback((accepted: boolean) => { consent.current = accepted; setTermsAccepted(accepted); }, []);
   const sessionRef = useRef<TestnetWalletSession | null>(null);
 
   useEffect(() => {
@@ -49,9 +52,9 @@ function useWalletOwner() {
     };
   }, []);
 
-  const connect = useCallback(() => { void sessionRef.current?.connect(); }, []);
-  const disconnect = useCallback(() => { void sessionRef.current?.disconnect(); }, []);
-  const selectAccount = useCallback((accountId: string) => { sessionRef.current?.selectAccount(accountId); }, []);
+  const connect = useCallback(() => { if (consent.current) void sessionRef.current?.connect(); }, []);
+  const disconnect = useCallback(() => { acceptTerms(false); void sessionRef.current?.disconnect(); }, [acceptTerms]);
+  const selectAccount = useCallback((accountId: string) => { acceptTerms(false); sessionRef.current?.selectAccount(accountId); }, [acceptTerms]);
   const getContext = useCallback(() => ({ accountId: sessionRef.current?.snapshot.accountId ?? null, network: sessionRef.current?.network ?? "unknown" }), []);
   const signCreation = useCallback((tx: CreationTransaction) => {
     if (!sessionRef.current) return Promise.reject(new Error("Connect Meteor Wallet first."));
@@ -67,7 +70,7 @@ function useWalletOwner() {
     return sessionRef.current.signPayout(tx);
   }, []);
 
-  return { ...state, connect, disconnect, selectAccount, getContext, signCreation, signIdentity, signPayout };
+  return { ...state, termsAccepted, acceptTerms, connect, disconnect, selectAccount, getContext, signCreation, signIdentity, signPayout };
 }
 
 // The persistent root owns wallet listeners; route consumers share its snapshot.

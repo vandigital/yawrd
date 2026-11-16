@@ -51,6 +51,7 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
     setContributionRefreshVersion(version => version + 1);
   }
   async function prepare() {
+    if (!wallet.termsAccepted) throw new Error("Agree to the Testnet Terms before signing in.");
     setChallenge(null);
     const c = wallet.getContext();
     if (!c.accountId || c.network !== 'testnet') throw new Error('Connect Meteor and select a Testnet account first.');
@@ -59,6 +60,7 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
     setChallenge(data.challenge);
   }
   async function sign() {
+    if (!wallet.termsAccepted) throw new Error("Agree to the Testnet Terms before signing in.");
     const c = challenge;
     setChallenge(null);
     if (!c || wallet.getContext().accountId !== c.accountId || wallet.getContext().network !== 'testnet' || window.location.origin !== c.origin || Date.now() >= c.expiresAt) throw new Error('The challenge expired or your account changed. Prepare a new challenge.');
@@ -68,6 +70,7 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
     } catch { throw new Error('Meteor message approval did not complete. Prepare a new challenge when ready.'); }
     if (wallet.getContext().accountId !== c.accountId || wallet.getContext().network !== 'testnet' || proof.accountId !== c.accountId) throw new Error('The wallet account changed. Prepare a new challenge.');
     await request('/api/auth/verify', { challengeId: c.id, accountId: c.accountId, network: 'testnet', proof: { accountId: proof.accountId, publicKey: proof.publicKey, signature: proof.signature } });
+    wallet.acceptTerms(false);
     await refresh();
   }
   return <>
@@ -76,7 +79,7 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
         onPrepare={() => { void run(prepare, true); }}
         onSelect={id => { setChallenge(null); wallet.selectAccount(id); }}
         onSignOut={() => { void run(async () => {
-          await request('/api/auth/logout', {}); setChallenge(null);
+          await request('/api/auth/logout', {}); wallet.acceptTerms(false); setChallenge(null);
           setView({ accountId: null, role: 'public', application: null, applications: [], restrictedContent: null });
           await refresh();
         }, true); }}>
@@ -84,7 +87,7 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
         {challenge && !view.accountId && challenge.accountId === wallet.accountId && <div className="mt-4 space-y-3 rounded-xl border border-[#377b78] bg-[#001e20] p-4 text-left">
           <pre className="whitespace-pre-wrap break-words text-xs leading-6 text-[#bed1c9]">{challenge.message}</pre>
           <p className="break-words text-xs leading-6 text-[#91b5aa]">Recipient: {challenge.recipient} · One attempt · Expires in five minutes</p>
-          <button className={button} disabled={busy || wallet.busy} onClick={() => run(sign, true)}>Approve sign-in message in Meteor</button>
+          <button className={button} disabled={!wallet.termsAccepted || busy || wallet.busy} onClick={() => run(sign, true)}>Approve sign-in message in Meteor</button>
         </div>}
         {error && walletAction && <p role="alert" className="mt-3 rounded-xl border border-[#d8a68d]/40 bg-[#d8a68d]/10 p-4 text-left text-sm leading-6 text-[#f1c5af]">{error}</p>}
         {busy && walletAction && <p role="status" className="mt-3 text-xs text-[#c2dedd]">Verifying or signing out… Please wait.</p>}
