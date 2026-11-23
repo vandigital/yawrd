@@ -3,7 +3,7 @@ import styles from "./docs.module.css";
 const groups = [
   { title: "Start here", pages: [["Introduction", "/docs"], ["What works today", "/docs#what-works-today"]] },
   { title: "Build together", pages: [["The founder journey", "/docs#creation-journey"], ["Crew & contributions", "/docs#how-yawrd-works"], ["Wallets & approvals", "/docs#wallet-and-approvals"]] },
-  { title: "Hackathon", pages: [["Genesis: YAW-001", "/docs#genesis-yaw-001"], ["WordWake in Development", "/docs#wordwake"], ["What comes next", "/docs#next-capabilities"]] },
+  { title: "Hackathon", pages: [["Genesis: YAW-001", "/docs#genesis-yaw-001"], ["WordWake: YAW-002", "/docs#wordwake"], ["What comes next", "/docs#next-capabilities"]] },
 ];
 
 export default function DocsLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -1,0 +1,22 @@
+{
+  "production": {
+    "domain": "yawrd.keelbase.io",
+    "deployment": "yawrd-63hohlei9-keelbase.vercel.app",
+    "status": "Ready",
+    "created": "2026-11-17",
+    "branch": "main",
+    "commit": "7e68e0ae5b60811cbb38723d00f67fc93a5c5835",
+    "assignmentEvidence": "Founder verified current Vercel Production Deployment dashboard in this conversation on 2026-11-23"
+  },
+  "githubStatus": {
+    "commit": "7e68e0ae5b60811cbb38723d00f67fc93a5c5835",
+    "context": "Vercel",
+    "state": "success",
+    "url": "https://vercel.com/keelbase/yawrd/ErbUULeK6GjSsecgUWV67yPg5ue2"
+  },
+  "integration": {
+    "head": "0ecf38f53436c887895dacb67fe3612cdf4d4ce5",
+    "branch": "feature/phase2-private-creation-p2-postgres-20261117",
+    "workingTree": "accepted through P3.8B, R0 and R1; preserved"
+  }
+}

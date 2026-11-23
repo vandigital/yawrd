@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { reserveMeteorAuthorizationWindow, type WalletLaunchEvent } from "../app/meteor-wallet-launch.ts";
 import type { Account, NearConnector, SignMessageParams, SignedMessage } from "@hot-labs/near-connect";
+import { hardeningTransaction, type HardeningBinding } from '../src/creation/hardening.ts';
+import { creationFeeTransaction } from '../src/creation/platform-fee.ts';
 import { TestnetWalletSession } from "../app/wallet-session.ts";
 import { buildYawrdCreation } from "../src/create-yawrd.ts";
 import type { CreationTransaction } from "../src/creation-integration.ts";
@@ -321,6 +324,7 @@ test("creation adapter reuses Meteor and sends an explicit Testnet signer and ac
   const fake = new FakeConnector(); fake.availableWallets = [fake.wallet]; fake.wallet.accounts = [{ accountId: "alice.testnet" }];
   const session = makeSession(fake); await session.start(); await session.connect();
   assert.equal(fake.wallet.signed.length, 0);
+  await session.prepareCreation(transaction);
   assert.deepEqual(await session.signCreation(transaction), { transaction: { hash: "mock-wallet-hash" } });
   assert.deepEqual(fake.wallet.signed, [transaction]); session.stop();
 });
@@ -328,10 +332,10 @@ test("creation adapter reuses Meteor and sends an explicit Testnet signer and ac
 test("creation adapter blocks disconnected wallets, wrong network and changed signer", async () => {
   const fake = new FakeConnector(); fake.availableWallets = [fake.wallet];
   const session = makeSession(fake); await session.start();
-  await assert.rejects(session.signCreation(transaction), /changed/);
+  await assert.rejects(session.signCreation(transaction), /prepared/);
   fake.wallet.accounts = [{ accountId: "alice.testnet" }]; await session.refresh();
-  fake.network = "mainnet"; await assert.rejects(session.signCreation(transaction), /changed/);
-  fake.network = "testnet"; await assert.rejects(session.signCreation({ ...transaction, signerId: "other.testnet" }), /changed/);
+  fake.network = "mainnet"; await assert.rejects(session.signCreation(transaction), /prepared/);
+  fake.network = "testnet"; await assert.rejects(session.signCreation({ ...transaction, signerId: "other.testnet" }), /prepared/);
   assert.equal(fake.wallet.signed.length, 0); session.stop();
 });
 
@@ -340,7 +344,7 @@ test("creation adapter rechecks wallet accounts and network after async lookup",
     const fake = new FakeConnector(); fake.availableWallets = [fake.wallet]; fake.wallet.accounts = [{ accountId: "alice.testnet" }];
     const session = makeSession(fake); await session.start();
     const lookup = deferred<{ wallet: FakeWallet }>(); fake.getConnected = () => lookup.promise;
-    const signing = session.signCreation(transaction);
+    const signing = session.prepareCreation(transaction);
     if (changed === "network") fake.network = "mainnet";
     else fake.wallet.accounts = [{ accountId: "bob.testnet" }];
     lookup.resolve({ wallet: fake.wallet }); await assert.rejects(signing, /changed/);
@@ -403,4 +407,123 @@ test("pending identity approval blocks duplicate signing and safely handles wall
   fake.wallet.signProof = async () => { throw new Error("human declined"); };
   await assert.rejects(session.signIdentity(messageParams), /human declined/);
   assert.equal(session.snapshot.busy, false); assert.equal(fake.wallet.signed.length, 0); session.stop();
+});
+
+test("Meteor authorization reserves a click-opened window for the delayed connector request", () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const previousActivation = Object.getOwnPropertyDescriptor(globalThis.navigator, "userActivation");
+  const navigated: string[] = [];
+  const popup = { closed: false, close() { this.closed = true; }, document: { title: "", body: { textContent: "" } }, location: { replace(url: string) { navigated.push(url); } } };
+  const originalOpen = ((_url?: string | URL, _target?: string, _features?: string) => popup) as typeof window.open;
+  const fakeWindow: { open: typeof window.open } = { open: originalOpen };
+  Object.defineProperty(globalThis, "window", { configurable: true, value: fakeWindow });
+  Object.defineProperty(globalThis.navigator, "userActivation", { configurable: true, value: { isActive: true } });
+  try {
+    const events: WalletLaunchEvent[] = [];
+    const reservation = reserveMeteorAuthorizationWindow((event) => events.push(event));
+    assert.ok(reservation);
+    reservation.connectorCall();
+    for (const url of [
+      "https://wallet.meteorwallet.app/connect/testnet/near%3A%3Asign_transactions",
+      "https://wallet.meteorwallet.app/connect/mainnet/sign",
+      "https://wallet.meteorwallet.app/connect/testnet/login",
+      "https://example.com/connect/testnet/sign",
+    ]) fakeWindow.open(url, "_blank");
+    assert.deepEqual(navigated, []);
+    const returned = fakeWindow.open("https://wallet.meteorwallet.app/connect/testnet/sign?source=wpm&connectionUid=synthetic", "_blank", "popup=yes");
+    assert.equal(returned, popup);
+    assert.deepEqual(navigated, ["https://wallet.meteorwallet.app/connect/testnet/sign?source=wpm&connectionUid=synthetic"]);
+    assert.deepEqual(events.map((event) => event.stage), ["founder-click", "connector-call", ...Array(4).fill("unexpected-popup-route"), "meteor-window-requested", "meteor-window-opened"]);
+    assert.equal(JSON.stringify(events).includes("connectionUid"), false);
+    reservation.release();
+    assert.equal(fakeWindow.open, originalOpen);
+    assert.equal(popup.closed, false);
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow); else delete (globalThis as any).window;
+    if (previousActivation) Object.defineProperty(globalThis.navigator, "userActivation", previousActivation); else delete (globalThis.navigator as any).userActivation;
+  }
+});
+
+test("blocked popup fails before any connector request", () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const fakeWindow = { open: () => null };
+  Object.defineProperty(globalThis, "window", { configurable: true, value: fakeWindow });
+  try {
+    const events: WalletLaunchEvent[] = [];
+    assert.equal(reserveMeteorAuthorizationWindow((event) => events.push(event)), null);
+    assert.deepEqual(events.map((event) => event.stage), ["founder-click", "popup-blocked"]);
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow); else delete (globalThis as any).window;
+  }
+});
+
+
+test("creation preparation rechecks wallet accounts and network after async lookup", async () => {
+  for (const changed of ["account", "network"]) {
+    const fake = new FakeConnector(); fake.availableWallets = [fake.wallet]; fake.wallet.accounts = [{ accountId: "alice.testnet" }];
+    const session = makeSession(fake); await session.start();
+    const lookup = deferred<{ wallet: FakeWallet }>(); fake.getConnected = () => lookup.promise;
+    const signing = session.prepareCreation(transaction);
+    if (changed === "network") fake.network = "mainnet";
+    else fake.wallet.accounts = [{ accountId: "bob.testnet" }];
+    lookup.resolve({ wallet: fake.wallet }); await assert.rejects(signing, /changed/);
+    assert.equal(fake.wallet.signed.length, 0); session.stop();
+  }
+});
+
+test("prepared creation invokes Meteor synchronously without another wallet lookup", async () => {
+  const fake = new FakeConnector(); fake.availableWallets = [fake.wallet]; fake.wallet.accounts = [{ accountId: "alice.testnet" }];
+  let lookups = 0;
+  fake.getConnected = async () => { lookups++; return { wallet: fake.wallet }; };
+  const session = makeSession(fake); await session.start();
+  await session.prepareCreation(transaction);
+  const preparedLookups = lookups;
+  const signing = session.signCreation(transaction);
+  assert.equal(fake.wallet.signed.length, 1);
+  assert.equal(lookups, preparedLookups);
+  await signing;
+  await assert.rejects(session.signCreation(transaction), (error: any) => error.code === "CREATION_NOT_REQUESTED");
+  session.stop();
+});
+
+const securityBinding:HardeningBinding={creationId:'yawrd-aaaaaaaaaaaa',creationRevision:6,intentRevision:14,
+  daoAccountId:'a1b2c3d4e5f6.factory.yawrd.testnet',factoryAccountId:'factory.yawrd.testnet',name:'Synthetic security',
+  founderAccountId:'alice.testnet',members:['alice.testnet','bob.testnet'],creationTransaction:'T'.repeat(43)};
+test('Creation governance reuses the prepared synchronous Meteor adapter after native keyless Steward selection',async()=>{
+  const fake=new FakeConnector();fake.availableWallets=[fake.wallet];fake.wallet.accounts=[{accountId:'alice.testnet'}];
+  const session=makeSession(fake);await session.start();const tx=hardeningTransaction(securityBinding,'alice.testnet',null);
+  await session.prepareCreation(tx);assert.deepEqual(fake.connectOptions,{walletId:'meteor-wallet'});assert.equal(fake.wallet.signed.length,0);
+  const result=session.signCreation(tx);assert.equal(fake.wallet.signed.length,1);assert.deepEqual(fake.wallet.signed[0],tx);
+  await result;await assert.rejects(session.signCreation(tx),/prepared/);session.stop();
+});
+test('Creation governance rejects app-key connections and a changed Steward before wallet submission',async()=>{
+  const fake=new FakeConnector();fake.availableWallets=[fake.wallet];fake.wallet.accounts=[{accountId:'alice.testnet',publicKey:'ed25519:'+'1'.repeat(32)}];
+  const session=makeSession(fake);await session.start();const tx=hardeningTransaction(securityBinding,'alice.testnet',null);
+  await assert.rejects(session.prepareCreation(tx),/Steward|app key/);assert.equal(fake.wallet.signed.length,0);
+  fake.wallet.accounts=[{accountId:'alice.testnet'}];await session.refresh();await session.prepareCreation(tx);
+  fake.wallet.accounts=[{accountId:'bob.testnet'}];fake.emit('wallet:signIn',{wallet:fake.wallet,accounts:fake.wallet.accounts});
+  await assert.rejects(session.signCreation(tx),/prepared/);assert.equal(fake.wallet.signed.length,0);session.stop();
+});
+
+test('native platform fee prepares the exact Transfer and invokes keyless Meteor synchronously once',async()=>{
+ const fake=new FakeConnector();fake.availableWallets=[fake.wallet];fake.wallet.accounts=[{accountId:'alice.testnet'}];
+ let lookups=0;fake.getConnected=async()=>{lookups++;return {wallet:fake.wallet};};
+ const session=makeSession(fake);await session.start();const tx=creationFeeTransaction('alice.testnet');
+ await session.prepareCreation(tx);assert.equal(fake.wallet.signed.length,0);const preparedLookups=lookups;
+ const signing=session.signCreation(tx);assert.equal(fake.wallet.signed.length,1);assert.equal(lookups,preparedLookups);assert.deepEqual(fake.wallet.signed[0],tx);
+ await signing;await assert.rejects(session.signCreation(tx),/prepared/);session.stop();
+});
+test('native platform fee rejects altered amount/recipient/actions and app-key accounts before submission',async()=>{
+ const fake=new FakeConnector();fake.availableWallets=[fake.wallet];fake.wallet.accounts=[{accountId:'alice.testnet'}];
+ const session=makeSession(fake);await session.start();
+ for(const change of ['amount','recipient','extra']){
+  const tx=creationFeeTransaction('alice.testnet');
+  if(change==='amount')tx.actions[0].params.deposit='1';
+  if(change==='recipient')tx.receiverId='other.testnet';
+  if(change==='extra')(tx.actions as any[]).push(tx.actions[0]);
+  await assert.rejects(session.prepareCreation(tx),/request changed/);
+ }
+ fake.wallet.accounts=[{accountId:'alice.testnet',publicKey:'ed25519:'+'1'.repeat(32)}];await session.refresh();
+ await assert.rejects(session.prepareCreation(creationFeeTransaction('alice.testnet')),/Steward|app key/);
+ assert.equal(fake.wallet.signed.length,0);session.stop();
 });

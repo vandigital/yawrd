@@ -1,0 +1,20 @@
+.content { display: grid; gap: 14px; color: #bed1c9; line-height: 1.75; font-size: 14px; overflow-wrap: anywhere; }
+.content h3 { margin: 4px 0 0; font-family: Georgia, serif; color: #f0f7f5; font-size: 22px; font-weight: 500; }
+.content p, .content li { white-space: pre-wrap; }
+.content ul { margin: 0; padding-left: 20px; list-style: disc; }
+.content li { margin-block: 6px; }
+.allocation { display: block; color: #f2f7f5; font-family: Georgia, serif; font-size: 18px; line-height: 1.35; white-space: nowrap; }
+.terms { display: block; margin-top: 4px; color: #91b5aa; font-size: 10px; line-height: 1.5; }
+.identity { margin-block: 16px 0; color: #e0ece9; line-height: 1.6; overflow-wrap: anywhere; }
+.identity dt { color: #91b5aa; font-size: 11px; margin-top: 12px; }
+.identity dd { margin: 4px 0 0; font-size: 14px; }
+.empty { margin-top: 12px; color: #b4cccb; font-size: 13px; line-height: 1.75; }
+
+/* Preview-only sea-green treatment; accepted Genesis/WordWake styles are untouched. */
+.page :is(section, aside) :is(h2, h3, h4, summary), .page .seaGreen, .page nav a { color: #c2dedd; }
+.creator { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+.creator > div { min-width: 0; }
+.avatar { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid #4e827b; border-radius: 50%; }
+.creatorLabel { color: #c2dedd; font-size: 11px; }
+.creatorAccount { color: #e0ece9; overflow-wrap: anywhere; font-size: 14px; }
+@media (max-width: 699px) { .allocation { white-space: normal; overflow-wrap: anywhere; } }

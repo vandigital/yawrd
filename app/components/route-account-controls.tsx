@@ -4,6 +4,8 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import styles from "./global-navigation.module.css";
 
+export const ACCOUNT_SESSION_CHANGED = 'yawrd:session-changed';
+
 export const AccountSlot = createContext<{ target: HTMLElement | null; setOccupied: (occupied: boolean) => void } | null>(null);
 
 // Presentation only: project challenges, verification and logout stay route-owned.

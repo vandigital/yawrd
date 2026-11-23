@@ -42,7 +42,7 @@ export function sameOrigin(request: Request, origin: string | null, mutation = t
 export function fields(data: Record<string, unknown>, expected: string[]) {
   fail(Object.keys(data).length === expected.length && expected.every(k => Object.hasOwn(data, k)), 'invalid_request');
 }
-export async function body(request: Request): Promise<Record<string, unknown>> {
+export async function body(request: Request, maxBytes = 8192): Promise<Record<string, unknown>> {
   fail(request.headers.get('content-type')?.split(';')[0].trim() === 'application/json' && request.body, 'invalid_request');
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -51,7 +51,7 @@ export async function body(request: Request): Promise<Record<string, unknown>> {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.length;
-    if (size > 8192) { await reader.cancel(); throw new WorkflowError('request_too_large', 413); }
+    if (size > maxBytes) { await reader.cancel(); throw new WorkflowError('request_too_large', 413); }
     chunks.push(value);
   }
   let data;

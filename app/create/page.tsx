@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import CreationBuilder from "./creation-builder";
+import CreationWelcome from "./creation-welcome";
 
 export const metadata: Metadata = {
   title: "Open a Yawrd · Testnet",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function CreatePage() {
-  return <CreationBuilder />;
+  return <CreationWelcome />;
 }

@@ -4,7 +4,7 @@ import type { IdentityChallenge, IdentityProof } from "./types.ts";
 
 export const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 export const IDENTITY_RECIPIENT = "Yawrd localhost identity verification";
-export const TESTNET_RPC = "https://rpc.testnet.near.org";
+export const TESTNET_RPC = "https://test.rpc.fastnear.com";
 
 export class IdentityError extends Error {
   readonly code: string;

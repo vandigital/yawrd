@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ProjectWalletControls, projectButton } from './project-wallet-controls';
-import { RouteAccountControls, openAccountDisclosure } from './route-account-controls';
+import { ACCOUNT_SESSION_CHANGED, RouteAccountControls, openAccountDisclosure } from './route-account-controls';
 import { useTestnetWallet } from '../use-testnet-wallet';
 import type { IdentityChallenge } from '../../src/identity/types';
 import type { ParticipantView } from '../../src/participants/types';
@@ -36,12 +36,14 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
   const [challenge, setChallenge] = useState<IdentityChallenge | null>(null);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
+  const accessVersion = useRef(0);
   const [error, setError] = useState('');
   const [walletAction, setWalletAction] = useState(false);
   const [introduction, setIntroduction] = useState('');
   const [consent, setConsent] = useState(false);
   const [contributionRefreshVersion, setContributionRefreshVersion] = useState(0);
   const path = `/api/yawrd/${encodeURIComponent(projectId)}`;
+  useEffect(()=>{const changed=()=>{accessVersion.current++;setChallenge(null);setView({accountId:null,role:'public',application:null,applications:[],restrictedContent:null});void refresh().catch(()=>setError('Refresh your access after sign-in.'));};window.addEventListener(ACCOUNT_SESSION_CHANGED,changed);return()=>window.removeEventListener(ACCOUNT_SESSION_CHANGED,changed);},[projectId]);
   async function run(work: () => Promise<void>, inWallet = false) {
     if (lock.current) return;
     lock.current = true; setBusy(true); setError(''); setWalletAction(inWallet);
@@ -50,8 +52,9 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
     finally { lock.current = false; setBusy(false); }
   }
   async function refresh() {
-    setView(await request(`${path}/state`));
-    setContributionRefreshVersion(version => version + 1);
+    const version=++accessVersion.current;
+    const next=await request(`${path}/state`);
+    if(version===accessVersion.current){setView(next);setContributionRefreshVersion(value => value + 1);}
   }
   async function prepare() {
     if (!wallet.termsAccepted) throw new Error("Agree to the Testnet Terms before signing in.");
@@ -74,6 +77,7 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
     if (wallet.getContext().accountId !== c.accountId || wallet.getContext().network !== 'testnet' || proof.accountId !== c.accountId) throw new Error('The wallet account changed. Prepare a new challenge.');
     await request('/api/auth/verify', { challengeId: c.id, accountId: c.accountId, network: 'testnet', proof: { accountId: proof.accountId, publicKey: proof.publicKey, signature: proof.signature } });
     wallet.acceptTerms(false);
+    window.dispatchEvent(new Event(ACCOUNT_SESSION_CHANGED));
     await refresh();
   }
   return <>
@@ -82,7 +86,7 @@ export function ParticipantPanel({ projectId, initial, children, contributionsAc
         onPrepare={() => { void run(prepare, true); }}
         onSelect={id => { setChallenge(null); wallet.selectAccount(id); }}
         onSignOut={() => { void run(async () => {
-          await request('/api/auth/logout', {}); wallet.acceptTerms(false); setChallenge(null);
+          await request('/api/auth/logout', {}); window.dispatchEvent(new Event(ACCOUNT_SESSION_CHANGED)); wallet.acceptTerms(false); setChallenge(null);
           setView({ accountId: null, role: 'public', application: null, applications: [], restrictedContent: null });
           await refresh();
         }, true); }}>

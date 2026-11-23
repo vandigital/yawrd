@@ -3,7 +3,7 @@ import styles from "./docs.module.css";
 
 export const metadata: Metadata = {
   title: "Introduction · Yawrd Documentation",
-  description: "Explore Yawrd, verified Genesis contributions and Testnet rewards, the newer founder journey, and the private WordWake Development demonstration.",
+  description: "Explore Yawrd, verified Genesis contributions and Testnet rewards, the accepted Development Creation journey, and public WordWake.",
 };
 
 const sections = [
@@ -13,7 +13,7 @@ const sections = [
   ["what-works-today", "What works today"],
   ["genesis-yaw-001", "Genesis: YAW-001"],
   ["creation-journey", "The founder journey"],
-  ["wordwake", "WordWake in Development"],
+  ["wordwake", "WordWake: YAW-002"],
   ["wallet-and-approvals", "Wallets & approvals"],
   ["next-capabilities", "What comes next"],
 ];
@@ -66,28 +66,11 @@ export default function DocsIntroduction() {
       <section id="what-works-today" aria-labelledby="status-title">
         <p className={styles.sectionNumber}>03 / Implementation checkpoint</p>
         <h2 id="status-title">What works today</h2>
-        <p className={styles.checkpoint}>Documentation checkpoint · November 15, 2026 · Testnet</p>
-        <p>Genesis completed a real contribution-to-reward lifecycle on November 7. Later work improved its public project page and built a newer founder experience in Development. These are different release states.</p>
+        <p className={styles.checkpoint}>Documentation checkpoint · November 23, 2026 · Testnet</p>
         <div className={styles.statusList}>
-          <section className={styles.accepted} aria-labelledby="accepted-title"><h3 id="accepted-title">Verified Production / public</h3><ul>
-            <li>Read-only public checks on November 15 returned HTTP 200 for the homepage, Docs, creation page and Genesis project.</li>
-            <li>Genesis displays accepted deliverables, reviewed contribution links, integrated Build Progress and completed status with applications closed.</li>
-            <li>The historical Genesis evidence records two accepted contributions and a successful 1 NEAR Testnet payout. The public route check does not freshly verify settlement or establish the deployed source revision.</li>
-            <li>The public creation page still serves the older preview-only builder. The newer journey below is a Development capability.</li>
-          </ul></section>
-          <section aria-labelledby="development-title"><h3 id="development-title">Verified Development</h3><ul>
-            <li>Wallet-first welcome, guided verified sign-in, provisional Testnet consent, project intake, account-scoped browser drafts and founder dashboard.</li>
-            <li>WordWake: a genuine second project with a verified deployed Testnet governance account, reviewed Blueprint, saved T1/T2 task drafts, Project Resources and a founder-only preview.</li>
-            <li>Per-task reward draft configuration and read-only governance preparation. Saved-data checks, focused tests and simulated browser checks support these capabilities; they do not establish a Production release.</li>
-          </ul></section>
-          <section aria-labelledby="unexecuted-title"><h3 id="unexecuted-title">Implemented but not executed</h3><ul>
-            <li>WordWake security wallet controls prepare a proposal and two separately authorized Steward approvals. No hardening proposal has been submitted and no change has executed.</li>
-            <li>Formal reward approval, funding and launch remain separate unmet requirements.</li>
-          </ul></section>
-          <section aria-labelledby="pending-title"><h3 id="pending-title">Planned</h3><ul>
-            <li>Generalized new-project deployment through the newer journey, server-backed recovery of new browser drafts and a funded WordWake launch.</li>
-            <li>Public Join activation and broader multi-project collaboration and agent capabilities.</li>
-          </ul></section>
+          <section className={styles.accepted}><h3>Production / public</h3><p>Genesis (YAW-001) and WordWake (YAW-002) have deployed Testnet project accounts. Both appear in Production Discover. Genesis is completed with applications closed; WordWake accepts Join applications while its tasks remain inactive. Generalized Creation follows the invite-only Testnet policy described below.</p></section>
+          <section><h3>Accepted Development Creation</h3><p>The accepted P3.8B baseline supports private saved Creations, verified deployment and security setup, separate platform payment, Blueprint preparation and approval, contribution and work-review configuration, and wallet-authorized publication to a public page and Discover. Community Tool Library completed real Meteor NEP-413 publication in Development, including public-page and Discover checks. Its records remain Development-only. This acceptance does not activate these capabilities in Production.</p></section>
+          <section><h3>Production Beta preparation</h3><p>Founder Creation admission is invite-only and requires verified Testnet sign-in. Availability depends on the environment’s approved storage, publication and release configuration; connecting a wallet alone grants no Creation access.</p></section>
         </div>
       </section>
 
@@ -113,21 +96,28 @@ export default function DocsIntroduction() {
         </div>
       </section>
       <section id="creation-journey" aria-labelledby="creation-title">
-        <p className={styles.sectionNumber}>05 / A clearer start</p>
-        <h2 id="creation-title">The newer founder journey</h2>
-        <p>In Development, founders begin with a wallet-first welcome and provisional Testnet consent, then explicitly verify sign-in. Guided intake helps them name the project, describe the goal, identify resources and review a useful first result.</p>
-        <p>Founders can copy the questions to an independently operated AI assistant, review its suggestions and bring back their own answers. Intake itself does not contact an AI service. WordWake’s separate Blueprint workspace demonstrates controlled AI-assisted preparation.</p>
-        <p>New drafts save for the signed-in account in that browser. This is not encrypted storage, a server backup or cross-device recovery. The founder dashboard brings together intake, setup status, Stewards, Project Resources and next steps. Saving a draft creates no governance account, funding commitment or public listing.</p>
-        <p>The existing WordWake project can continue to its saved setup and private preview. New projects do not yet have a generalized deployment and launch workflow through this journey.</p>
+        <p className={styles.sectionNumber}>05 / From private idea to public page</p>
+        <h2 id="creation-title">The accepted Creation journey</h2>
+        <p>This walkthrough describes the accepted Creation flow on Testnet. Opening a Yawrd is invite-only and requires verified Testnet sign-in. Availability depends on the environment’s approved release configuration.</p>
+        <ol>
+          <li><strong>Sign in.</strong> Open a Yawrd, review the provisional Testnet terms, connect Meteor and explicitly approve the sign-in message for your selected Testnet account. Connecting alone does not establish a verified session. The message costs no gas and cannot spend funds. Approved founders continue automatically to intake; other signed-in accounts see the invite-only notice and can Explore Yawrds.</li>
+          <li><strong>Describe your project.</strong> Complete the guided intake and save your private Creation. Saved Creations can be resumed after verified sign-in; unsaved browser answers are not a server backup. Saving does not publish or create a project account.</li>
+          <li><strong>Set up your Yawrd.</strong> Save the proposed public details and second Steward. Both Stewards must approve project decisions. Review the reserved account identifier and deployment request. An authorized deployment requires a separate wallet transaction, a 1 Testnet NEAR setup deposit and network gas. A reservation or transaction hash alone does not prove successful setup.</li>
+          <li><strong>Complete security and payment.</strong> After deployment verification, the founder submits the security proposal and each Steward approves separately; the final approval executes the change. Continue only after verification that automatic updates are disabled and the expected approvals are recorded. These wallet transactions use gas. The separate 0.5 Testnet NEAR platform payment also needs explicit approval and successful transfer verification. Setup costs and platform fees do not fund contributor rewards.</li>
+          <li><strong>Build your Blueprint.</strong> Review the preparation context. Where enabled and separately authorized, generation sends the disclosed project context to an AI provider. Review and edit the Blueprint, contributor Skill and proposed tasks, save a version and explicitly approve that version. Approval stays private and does not authorize publication.</li>
+          <li><strong>Configure contributions and work review.</strong> Choose included tasks, check dependencies and explicitly decide contribution terms. Current generalized configuration supports undecided or acknowledged unpaid terms; it does not approve paid rewards. Save the founder-led work-review configuration against the current approved Blueprint and contribution version.</li>
+          <li><strong>Preview and authorize publication.</strong> Review the full proposed public page, including the approved Blueprint title and overview and selected planned task details. Choose Launch my Yawrd and approve the fresh NEP-413 publication message in Meteor. This separate message binds the exact public content and current source; it costs no gas and sends no transaction. A changed source, switched account or cancelled approval cannot establish publication.</li>
+          <li><strong>Confirm the public result.</strong> A durable publication receipt provides the public Yawrd link. The same published projection appears in Discover. Reloading can recover the receipt. Publication leaves applications, task claiming, rewards and payments inactive for generalized Creations; participation requires separate activation.</li>
+        </ol>
+        <p className={styles.note}>Deployment, payment, Blueprint approval, publication and active participation are separate decisions. This documentation update enables none of them in Production. Production release approval remains separate; a documentation update grants no access or wallet permissions.</p>
       </section>
 
       <section id="wordwake" aria-labelledby="wordwake-title">
         <p className={styles.sectionNumber}>06 / A second project</p>
-        <h2 id="wordwake-title">WordWake in Development</h2>
-        <p>WordWake demonstrates an actual second project rather than a renamed Genesis fixture. Its Testnet governance account is deployed, and its authorized founder can review a saved Blueprint, T1/T2 task drafts, Project Resources and a private project preview.</p>
-        <p>Per-task reward configuration supports paid or explicitly unpaid drafts. The founder’s proposed T1/T2 amounts are 1 NEAR each, saved only in the founder’s browser. They are not approved rewards, funded commitments or public offers.</p>
-        <p>The latest recorded read-only network verification, at 01:17:59 Manila on November 15, found automatic updates enabled and no security proposal. The newer wallet controls are implemented for human review, with simulated browser coverage; no real signing, proposal, approval or hardening execution is established by those tests.</p>
-        <p className={styles.note}>WordWake remains private and unpublished. It is not funded for launch or open for applications. Its preview requires founder authorization and is not a public judge walkthrough.</p>
+        <h2 id="wordwake-title">WordWake: YAW-002</h2>
+        <p>WordWake is a genuine second Yawrd with a deployed Testnet project account and a public project page linked from Discover. Its reviewed game project and planned work use the shared project presentation.</p>
+        <p>Join applications are open; task claiming and work remain inactive. Its project-specific publication and reward configuration do not establish generalized Creation participation or paid-reward support.</p>
+        <a href="/yawrd/yaw-002" className={styles.repository}>Explore WordWake <span aria-hidden="true">↗</span></a>
       </section>
 
       <section id="wallet-and-approvals" aria-labelledby="wallet-title">
@@ -138,14 +128,14 @@ export default function DocsIntroduction() {
           <section><h3>Create project governance</h3><p>A DAO is the underlying account and Project Rules for governed decisions. Creating it is a separate wallet transaction with setup and network costs. It does not automatically publish the project or fund rewards.</p></section>
           <section><h3>Fund and approve rewards</h3><p>Funding is a separate deposit to Project Funds. Accepted work still needs reward authorization under the project’s rules. Stewards approve a Reward Request; successful transfer receipts establish payout. Neither a draft amount nor a submitted transaction hash proves payment.</p></section>
         </div>
-        <p>For WordWake’s proposed security change, creating the proposal casts no vote. Each Steward must approve separately, and the second approval executes the change. Disabling automatic updates also disables the current factory-mediated upgrade route. Funding and publication remain separate decisions afterward.</p>
+        <p>Creating a security proposal casts no vote. Each Steward must approve separately, and the final required approval executes the change. Disabling automatic updates also disables the current factory-mediated upgrade route. Funding and publication remain separate decisions afterward.</p>
         <p>The provisional Testnet Terms checkbox is held in memory. It is a UI gate, not a durable consent record or an API authorization boundary. Versioned, auditable wallet-associated consent and legal review are still needed before Mainnet.</p>
       </section>
 
       <section id="next-capabilities" aria-labelledby="next-title">
         <p className={styles.sectionNumber}>08 / Inspect and reproduce</p>
         <h2 id="next-title">What comes next</h2>
-        <p>Yawrd is a bounded Testnet demonstration with newer Development workflows, not yet a generally available multi-project platform. Next capabilities include generalized creation, durable draft recovery, separately authorized governance and reward funding, and a reviewed public launch with Join activation. Agents remain independently operated and their attribution operator-attested.</p>
+        <p>Yawrd is a bounded Testnet demonstration with newer Development workflows, not yet a generally available multi-project platform. The accepted Development Creation flow includes durable draft recovery and reviewed publication. Production Beta access follows the approved invite-only policy and environment configuration. Generalized Join activation, paid rewards and reward funding require separate authorization. Agents remain independently operated and their attribution operator-attested.</p>
         <p>Reviewers can inspect Genesis and its public contribution evidence without signing a wallet message. The main repository README explains the architecture, installation, test commands and dated validation results. The platform source and local setup instructions are separate from the public Genesis contribution repository. Repository visibility does not grant project membership, wallet permissions or software reuse rights.</p>
         <a href="https://github.com/vandigital/yawrd" className={styles.repository}>Main repository and local setup <span aria-hidden="true">↗</span></a>
         <p>Historical suite counts and simulated browser results are recorded separately. They do not establish live wallet execution, a deployed commit identity or a fresh payout. This documentation update does not deploy the newer journey.</p>

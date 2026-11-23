@@ -1,8 +1,12 @@
 "use client";
 import { useRef, useState } from 'react';
 import styles from './discovery-carousel.module.css';
-export type DiscoveryProject = { id:string; name:string; description:string; status:string; image:string };
+import { BuoyMark } from './buoy-mark';
+export type DiscoveryProject = { id:string; name:string; description:string; status:string; image:string; lifecycle?:'actionable'|'planned'|'completed' };
 export function DiscoveryCarousel({projects}:{projects:DiscoveryProject[]}) {
+  // Sort a copy; publication readers retain their eligibility and stable order.
+  const rank = { actionable: 0, planned: 1, completed: 2 };
+  projects = [...projects].sort((a, b) => rank[a.lifecycle ?? 'planned'] - rank[b.lifecycle ?? 'planned']);
   const rail=useRef<HTMLDivElement>(null), [active,setActive]=useState(0);
   function move(index:number) {
     const node=rail.current?.children[index] as HTMLElement | undefined;
@@ -21,7 +25,7 @@ export function DiscoveryCarousel({projects}:{projects:DiscoveryProject[]}) {
       onKeyDown={e=>{if(e.target!==e.currentTarget)return;const next=e.key==='ArrowRight'?active+1:e.key==='ArrowLeft'?active-1:e.key==='Home'?0:e.key==='End'?projects.length-1:null;if(next!==null){e.preventDefault();move(Math.max(0,Math.min(projects.length-1,next)));}}}>
       {projects.map((p,i)=><article key={p.id} className={styles.card} tabIndex={0} onFocus={()=>setActive(i)} aria-roledescription="slide" aria-label={`${i+1} of ${projects.length}: ${p.name}`}
         onKeyDown={e=>{if(e.target!==e.currentTarget)return;if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();move(Math.max(0,Math.min(projects.length-1,i+(e.key==='ArrowRight'?1:-1))));}}}>
-        <img src={p.image} alt="" width="367" height="180"/><div><p className="landing-eyebrow">{p.id.toUpperCase()} · {p.status}</p><h3>{p.name}</h3><p>{p.description}</p><a href={`/yawrd/${p.id}`} className="landing-secondary">Explore this Yawrd →</a></div>
+        <div className={styles.banner} aria-hidden="true">{p.image === '/brand/yawrd-buoy.webp' ? <BuoyMark width={40} height={40}/> : <img src={p.image} alt="" width="367" height="56"/>}</div><div className={styles.content}><p className={styles.status}>{p.id.toUpperCase()} · {p.status}</p><h3>{p.name}</h3><p className={styles.description}>{p.description}</p><a href={`/yawrd/${p.id}`} className="landing-secondary">Explore this Yawrd →</a></div>
       </article>)}
     </div><p className={styles.position} aria-live="polite">{active+1} of {projects.length} · Swipe or use the arrow controls</p>
   </section>;

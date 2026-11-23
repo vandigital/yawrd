@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { DiscoveryCarousel, type DiscoveryProject } from "./components/discovery-carousel";
 import { publicWordWake } from '../src/launch/wordwake-public';
+import { discoverGeneralizedYawrds } from '../src/creation/publication-public';
 import { database } from '../src/participants/database';
 
 export const dynamic = 'force-dynamic';
@@ -35,8 +36,10 @@ export default async function LandingPage() {
   const [wordwake,genesis] = await Promise.all([publicWordWake(database).catch(()=>null),
     database("SELECT id FROM yawrd.projects WHERE network='testnet' AND id='yaw-001' AND creator_account_id='yawrd1.testnet' AND dao_account_id='demo.factory.yawrd.testnet' AND published_at IS NOT NULL").catch(()=>[])]);
   const projects: DiscoveryProject[] = [];
-  if(genesis.length===1)projects.push({id:'yaw-001',name:'Build Progress',description:'Two accepted deliverables. Follow the completed Genesis build and its public contribution history.',status:'Completed · Applications closed',image:'/landing/build-progress.webp'});
-  if(wordwake)projects.push({id:'yaw-002',name:wordwake.name,description:wordwake.description,status:'Join applications open · Tasks not activated',image:'/brand/yawrd-buoy.webp'});
+  if(genesis.length===1)projects.push({id:'yaw-001',name:'Build Progress',description:'Two accepted deliverables. Follow the completed Genesis build and its public contribution history.',status:'Completed · Applications closed',lifecycle:'completed',image:'/landing/build-progress.webp'});
+  if(wordwake)projects.push({id:'yaw-002',name:wordwake.name,description:wordwake.description,status:'Join applications open · Tasks not activated',lifecycle:'actionable',image:'/brand/yawrd-buoy.webp'});
+  const generalized = await discoverGeneralizedYawrds(database).catch(()=>[]);
+  projects.push(...generalized.map(p=>({id:p.id,name:p.payload.name,description:p.payload.description,status:'Published · Applications closed',lifecycle:'planned' as const,image:'/brand/yawrd-buoy.webp'})));
   return <div className="landing-page">
     <a href="#main-content" className="landing-skip">Skip to content</a>
     <div aria-hidden="true" className="landing-dockyard" />

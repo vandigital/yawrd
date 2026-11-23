@@ -1,0 +1,7 @@
+{
+  "baseline": "accepted P3.8 shared shell; integration HEAD 0ecf38f plus accepted working tree through R1",
+  "files": {
+    "app/components/project-space-shell.tsx": "603bdaf9b019958df78867e73783d075d5873f1d172d39d2c2d6627baefafa5f",
+    "app/components/project-space-shell.module.css": "9b7999ee8a9d741f3b6c94aa2529d5d7c7ed2dc1602c0bd285eb4101c631b75a"
+  }
+}

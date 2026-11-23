@@ -1,5 +1,7 @@
 import type { Account, NearConnector, SignMessageParams } from "@hot-labs/near-connect";
-import type { CreationTransaction } from "../src/creation-integration.ts";
+import { creationFeeTransaction, type CreationFeeTransaction } from '../src/creation/platform-fee.ts';
+import type { HardeningTransaction } from '../src/creation/hardening.ts';
+import { canonical, type CreationTransaction } from "../src/creation-integration.ts";
 import { payoutTransaction, payoutDescription, transferKind, type PayoutTransaction } from '../src/rewards/payout.ts';
 
 const METEOR_WALLET_ID = "meteor-wallet";
@@ -20,6 +22,8 @@ export const initialWalletState: WalletState = {
 export class TestnetWalletSession {
   private state: WalletState = initialWalletState;
   private active = true;
+  private nativeSteward: string | null = null;
+  private preparedCreation: { transaction: string; revision: number; wallet: NearConnector["availableWallets"][number]; expiresAt: number } | null = null;
   private revision = 0;
   private disconnecting = false;
   private registrationDuringStart = false;
@@ -57,17 +61,65 @@ export class TestnetWalletSession {
     }
   }
 
-  async signCreation(transaction: CreationTransaction) {
+  async prepareCreation(transaction: CreationTransaction | HardeningTransaction | CreationFeeTransaction) {
+    const action=transaction.actions[0];
+    const governance=action.type==='Transfer'||action.params.methodName!=='create';
+    if(action.type==='Transfer'&&canonical(transaction)!==canonical(creationFeeTransaction(transaction.signerId)))
+      throw Error('Platform fee request changed. Review the exact amount and recipient again.');
+    if(governance&&this.nativeSteward!==transaction.signerId){
+      // Accepted C3C native account selection: a Yawrd dropdown alone does not
+      // choose the account Meteor will use. This connect requests no transaction.
+      await this.connect();
+      if(this.state.error||this.nativeSteward!==transaction.signerId)throw Error('Choose the same signed-in Steward in Meteor. No governance transaction was requested.');
+    }
     if (!this.active || this.state.busy || !this.state.ready || this.connector.network !== "testnet" || transaction.network !== "testnet" || this.state.accountId !== transaction.signerId) {
       throw new Error("Wallet account or network changed. Review again.");
     }
     const revision = this.revision;
-    const { wallet } = await this.connector.getConnectedWallet();
-    const accounts = await wallet.getAccounts({ network: "testnet" });
-    if (!this.active || revision !== this.revision || this.connector.network !== "testnet" || this.state.accountId !== transaction.signerId || wallet !== this.meteorWallet || !this.meteorIsAvailable() || !accounts.some((account) => account.accountId === transaction.signerId)) {
-      throw new Error("Wallet account or network changed. Review again.");
+    this.preparedCreation = null;
+    this.update({ busy: true });
+    try {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const { wallet, accounts } = await Promise.race([
+        (async () => { const { wallet } = await this.connector.getConnectedWallet();
+          return { wallet, accounts: await wallet.getAccounts({ network: "testnet" }) }; })(),
+        new Promise<never>((_,reject) => { timer=setTimeout(() => reject(new Error("Meteor account lookup timed out. No transaction was requested.")),10_000); }),
+      ]).finally(() => clearTimeout(timer));
+      if (!this.active || revision !== this.revision || this.connector.network !== "testnet" || this.state.accountId !== transaction.signerId || wallet !== this.meteorWallet || !this.meteorIsAvailable() || !accounts.some((account) => account.accountId === transaction.signerId)) {
+        throw new Error("Wallet account or network changed. Review again.");
+      }
+      if(governance&&(this.nativeSteward!==transaction.signerId||accounts.some(a=>a.publicKey!==undefined||(a as Account&{publicKeys?:unknown}).publicKeys!==undefined)))
+        throw Error('Reconnect this Steward in Meteor without an app key. Every governance action requires wallet approval.');
+      if (typeof wallet.signAndSendTransaction !== "function") throw new Error("Meteor cannot authorize transactions.");
+      this.preparedCreation = { transaction: canonical(transaction), revision, wallet, expiresAt: Date.now() + 60_000 };
+    } finally {
+      this.update({ busy: false });
+      if (this.refreshAfterBusy) { this.refreshAfterBusy = false; void this.refresh(); }
     }
-    return wallet.signAndSendTransaction(transaction);
+  }
+
+  signCreation(transaction: CreationTransaction | HardeningTransaction | CreationFeeTransaction): Promise<unknown> {
+    const prepared = this.preparedCreation;
+    this.preparedCreation = null;
+    if (!this.active || this.state.busy || !this.state.ready || this.connector.network !== "testnet" || transaction.network !== "testnet" || this.state.accountId !== transaction.signerId
+      || !prepared || prepared.expiresAt < Date.now() || prepared.revision !== this.revision || prepared.wallet !== this.meteorWallet
+      || !this.meteorIsAvailable() || prepared.transaction !== canonical(transaction)
+      || ((transaction.actions[0].type==='Transfer'||transaction.actions[0].params.methodName!=='create')&&this.nativeSteward!==transaction.signerId)) {
+      return Promise.reject(Object.assign(new Error("Wallet authorization is not freshly prepared. Check Testnet setup again."), { code: "CREATION_NOT_REQUESTED" }));
+    }
+    this.update({ busy: true });
+    try {
+      // Invoke the prepared connector without another async lookup. The
+      // click-reserved Meteor window bridges the earlier durable RPC claim.
+      const request = prepared.wallet.signAndSendTransaction(structuredClone(transaction));
+      return Promise.resolve(request).finally(() => {
+        this.update({ busy: false });
+        if (this.refreshAfterBusy) { this.refreshAfterBusy = false; void this.refresh(); }
+      });
+    } catch (error) {
+      this.update({ busy: false });
+      return Promise.reject(error);
+    }
   }
 
   async signPayout(transaction: PayoutTransaction) {
@@ -124,6 +176,7 @@ export class TestnetWalletSession {
     this.meteorWallet = meteorWallet;
     this.revision++;
     this.update({ available: Boolean(meteorWallet) });
+    if (!meteorWallet || walletReplaced) this.nativeSteward=null;
     if ((!meteorWallet || walletReplaced) && this.state.accountId) this.useAccounts([]);
     if (this.disconnecting) return;
     if (this.state.busy) this.refreshAfterBusy = true;
@@ -134,12 +187,16 @@ export class TestnetWalletSession {
   private signedIn = (event: { wallet: { manifest: { id: string } }; accounts: Account[] }) => {
     if (this.disconnecting) return;
     if (event.wallet.manifest.id === METEOR_WALLET_ID && event.wallet !== this.meteorWallet) return;
+    const nativeAccounts=[...new Set(event.accounts.map(a=>a.accountId))];
+    this.nativeSteward=event.wallet.manifest.id===METEOR_WALLET_ID&&nativeAccounts.length===1&&
+      event.accounts.every(a=>a.publicKey===undefined&&(a as Account&{publicKeys?:unknown}).publicKeys===undefined)?nativeAccounts[0]:null;
     this.revision++;
     this.useAccounts(event.wallet.manifest.id === METEOR_WALLET_ID && this.meteorIsAvailable()
       ? event.accounts : [], event.accounts[0]?.accountId);
   };
 
   private signedOut = () => {
+    this.nativeSteward=null;
     this.revision++;
     this.useAccounts([]);
   };

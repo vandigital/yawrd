@@ -55,3 +55,52 @@
   .sidebar { position: static; grid-row: 1; padding: 22px; }
   .deliverableCard { min-height: 0; padding: 21px; }
 }
+
+/* Identity-only pages share the public shell without invented progress or profiles. */
+.identityHero { grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; }
+.identityHero .tagline { white-space: pre-wrap; }
+.identityLayout { grid-template-columns: minmax(0, 1fr); }
+
+/* Opt-in compact header for proposed generalized pages; accepted project layouts retain their defaults. */
+.compact .hero { min-height: 200px; grid-template-columns: minmax(0, 1fr) 210px; gap: 24px; padding: 26px 32px; align-items: center; }
+.compact .heroCopy { min-width: 0; }
+.compact .hero h1 { margin: 7px 0 0; max-width: none; font-size: clamp(26px, 3vw, 38px); line-height: 1.12; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.compact .tagline { margin-top: 8px; font-size: 14px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.compact .status { margin-top: 10px; padding: 5px 10px; }
+.compact .mark { display: none; }
+.compact .completion { align-self: center; width: 100%; padding: 16px; }
+.compact .completionCopy { align-items: start; flex-direction: column; gap: 8px; }
+.compact .completion strong { font-family: inherit; font-size: 18px; }
+.compact .completionCopy span { max-width: none; text-align: left; }
+.compact .layout { padding: 28px 32px 36px; }
+.compact .main { gap: 28px; }
+.compact .completionTrack { display: flex; }
+.compact .completionTrack span { flex: 1; }
+@media (max-width: 699px) {
+  .compact .hero { min-height: 0; padding: 22px 20px; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .compact .hero h1 { font-size: clamp(25px, 7vw, 34px); }
+  .compact .completion { max-width: 100%; }
+  .compact .completionCopy { flex-direction: row; align-items: center; }
+  .compact .completionCopy span { max-width: 130px; text-align: right; }
+  .compact .layout { padding: 24px 20px 28px; }
+}
+
+/* Deliverable disclosures share the accepted shell's borders, palette and focus treatment. */
+.deliverableAccordion { min-width: 0; border-top: 1px solid #568d854d; color: #bed1c9; }
+.deliverableAccordion:last-child { border-bottom: 1px solid #568d854d; }
+.deliverableAccordion > summary { display: grid; grid-template-columns: 25px minmax(0, 1fr) 190px 18px; align-items: center; gap: 18px; min-height: 88px; padding: 16px 0; cursor: pointer; list-style: none; }
+.deliverableAccordion > summary::-webkit-details-marker { display: none; }
+.deliverableNumber { color: #8fe5d9; font-size: 11px; font-weight: 700; }
+.deliverableTitle { display: grid; gap: 6px; min-width: 0; }
+.deliverableTitle strong { color: #f0f7f5; font-size: 16px; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+.deliverableTitle > span { color: #c2dedd; font-size: 11px; }
+.deliverableAllocation { min-width: 0; text-align: right; border-left: 1px solid #568d854d; padding-left: 18px; }
+.disclosureIcon { color: #c2dedd; font-size: 22px; text-align: center; }
+.deliverableAccordion[open] .disclosureIcon { transform: rotate(45deg); }
+.deliverableBody { padding: 0 0 22px 37px; }
+@media (max-width: 900px) {
+  .deliverableAccordion > summary { grid-template-columns: 22px minmax(0, 1fr) 18px; gap: 8px; }
+  .deliverableAllocation { grid-column: 2; grid-row: 2; text-align: left; border-left: 0; border-top: 1px solid #568d854d; padding: 8px 0 0; }
+  .disclosureIcon { grid-column: 3; grid-row: 1; }
+  .deliverableBody { padding-left: 30px; }
+}

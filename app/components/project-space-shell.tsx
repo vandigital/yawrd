@@ -8,17 +8,19 @@ type ProjectSpaceShellProps = {
   title: string;
   tagline: string;
   status: string;
-  completion: Readonly<{ accepted: number; total: number; label: string }>;
+  compact?: boolean;
+  completion?: Readonly<{ accepted: number | null; total: number; label: string }>;
   artwork: ReactNode;
   mark: ReactNode;
   anchors: readonly AnchorItem[];
-  sidebar: ReactNode;
+  sidebar?: ReactNode;
   children: ReactNode;
 };
 
 /** Small, project-agnostic presentation shell; project facts and workflows stay with each Yawrd. */
 export function ProjectSpaceShell({
   eyebrow,
+  compact = false,
   title,
   tagline,
   status,
@@ -29,8 +31,8 @@ export function ProjectSpaceShell({
   sidebar,
   children,
 }: ProjectSpaceShellProps) {
-  return <article className={styles.shell}>
-    <div className={styles.hero}>
+  return <article className={compact ? `${styles.shell} ${styles.compact}` : styles.shell}>
+    <div className={completion ? styles.hero : `${styles.hero} ${styles.identityHero}`}>
       <div aria-hidden="true" className={styles.heroArtwork}>{artwork}</div>
       <div className={styles.heroCopy}>
         <p className={styles.eyebrow}>{eyebrow}</p>
@@ -39,28 +41,28 @@ export function ProjectSpaceShell({
         <p className={styles.status}>{status}</p>
       </div>
       <div aria-hidden="true" className={styles.mark}>{mark}</div>
-      <div
+      {completion && <div
         className={styles.completion}
-        aria-label={`${completion.accepted} of ${completion.total} ${completion.label}`}
+        aria-label={completion.accepted===null ? `${completion.label}: Not started · ${completion.total} planned` : `${completion.accepted} of ${completion.total} ${completion.label}`}
       >
         <div className={styles.completionCopy}>
-          <strong>{completion.accepted}/{completion.total}</strong>
-          <span>{completion.label}</span>
+          <strong>{completion.accepted===null ? 'Not started' : `${completion.accepted}/${completion.total}`}</strong>
+          <span>{completion.label}{completion.accepted===null && <> · {completion.total} planned</>}</span>
         </div>
         <div aria-hidden="true" className={styles.completionTrack}>
           {Array.from({ length: completion.total }, (_, index) =>
-            <span className={index < completion.accepted ? styles.accepted : undefined} key={index} />)}
+            <span className={completion.accepted!==null && index < completion.accepted ? styles.accepted : undefined} key={index} />)}
         </div>
-      </div>
+      </div>}
     </div>
 
-    <nav aria-label="Project sections" className={styles.anchorNav}>
+    {anchors.length > 0 && <nav aria-label="Project sections" className={styles.anchorNav}>
       {anchors.map(item => <a href={item.href} key={item.href}>{item.label}</a>)}
-    </nav>
+    </nav>}
 
-    <div className={styles.layout}>
+    <div className={sidebar ? styles.layout : `${styles.layout} ${styles.identityLayout}`}>
       <div className={styles.main}>{children}</div>
-      <aside aria-label="Project identity and governance" className={styles.sidebar}>{sidebar}</aside>
+      {sidebar && <aside aria-label="Project identity and governance" className={styles.sidebar}>{sidebar}</aside>}
     </div>
   </article>;
 }
@@ -87,4 +89,18 @@ export function ProjectDeliverableCard({ id, label, status, title, summary, meta
     <div className={styles.deliverableMeta}>{meta}</div>
     <div className={styles.deliverableActions}>{actions}</div>
   </article>;
+}
+
+/** Shared read-only deliverable disclosure. No claim/assignment or payment behavior. */
+export function ProjectDeliverableAccordion({ number, title, status, allocation, children }: {
+  number: number; title: string; status: string; allocation: ReactNode; children: ReactNode;
+}) {
+  return <details className={styles.deliverableAccordion}>
+    <summary><span className={styles.deliverableNumber}>{String(number).padStart(2,'0')}</span>
+      <span className={styles.deliverableTitle}><strong>{title}</strong><span>{status}</span></span>
+      <span className={styles.deliverableAllocation}>{allocation}</span>
+      <span className={styles.disclosureIcon} aria-hidden="true">+</span>
+    </summary>
+    <div className={styles.deliverableBody}>{children}</div>
+  </details>;
 }

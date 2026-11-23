@@ -1,0 +1,166 @@
+{
+  "status": "review-only; inventory target before installing missing definitions",
+  "prerequisite": "accepted sessions/auth/participant schema and trusted owner/runtime roles",
+  "steps": [
+    {
+      "order": 1,
+      "path": "docs/proposals/migrations/phase2_private_creation_p1.sql",
+      "sha256": "f4a1ab4d3aa4f276f7d9c94d9fd4c5c37848fe4eacc406bf3a7aeb71dac72b8a",
+      "objects": [
+        "yawrd.creation_drafts",
+        "yawrd.creation_text_digest",
+        "yawrd.creation_guard",
+        "yawrd.creation_founder",
+        "yawrd.creation_find_start",
+        "yawrd.creation_start",
+        "yawrd.creation_read",
+        "yawrd.creation_list",
+        "yawrd.creation_save",
+        "yawrd.creation_review_public_text"
+      ],
+      "hasOwnTransaction": false
+    },
+    {
+      "order": 2,
+      "path": "docs/proposals/migrations/phase2_creation_deployment_intents.sql",
+      "sha256": "33f6eb35df4728ba71165271be2514352926f00d9c9a6052439206c1df66a4c5",
+      "objects": [
+        "yawrd.creation_deployments",
+        "yawrd.creation_deployment_guard",
+        "yawrd.creation_deployment_lock",
+        "yawrd.creation_deployment_read",
+        "yawrd.creation_deployment_reserve",
+        "yawrd.creation_deployment_prepare",
+        "yawrd.creation_deployment_claim",
+        "yawrd.creation_deployment_note",
+        "yawrd.creation_deployment_finish"
+      ],
+      "hasOwnTransaction": false
+    },
+    {
+      "order": 3,
+      "path": "docs/releases/production-beta-r2/private-runtime-grants.sql",
+      "sha256": "038a6fb99b533ccd7b74b111bb74f4b9be941825184b3ce63d62cb994874fb03",
+      "objects": [],
+      "hasOwnTransaction": false
+    },
+    {
+      "order": 4,
+      "path": "docs/proposals/migrations/phase2_creation_deployment_recovery.sql",
+      "sha256": "90e520244563d8f25ce98f7f0b2bb55cd49d8f5d9856d682abe701efda7c36e5",
+      "objects": [
+        "yawrd.creation_deployment_guard",
+        "yawrd.creation_deployment_prepare"
+      ],
+      "hasOwnTransaction": true
+    },
+    {
+      "order": 5,
+      "path": "docs/proposals/migrations/phase2_creation_platform_fees.sql",
+      "sha256": "f831f4a512351a8de40e23984bda8b86e35ef74623c137ca738aea2958e91b13",
+      "objects": [
+        "yawrd.creation_platform_fees",
+        "yawrd.creation_fee_guard",
+        "yawrd.creation_fee_lock",
+        "yawrd.creation_fee_review",
+        "yawrd.creation_fee_read",
+        "yawrd.creation_fee_open",
+        "yawrd.creation_fee_claim",
+        "yawrd.creation_fee_note",
+        "yawrd.creation_fee_complete"
+      ],
+      "hasOwnTransaction": false
+    },
+    {
+      "order": 6,
+      "path": "docs/proposals/migrations/phase2_creation_platform_fee_grants.sql",
+      "sha256": "a0c6c10ac20ce9ad99e17dc344af177cdacba2888f938832276e2420ef1a1fd1",
+      "objects": [],
+      "hasOwnTransaction": false
+    },
+    {
+      "order": 7,
+      "path": "docs/proposals/migrations/phase2_creation_preparation.sql",
+      "sha256": "e23f46aa443cd1957fef9d1fe522348aff7394ee7fcb189d617e157cfef10bd7",
+      "objects": [
+        "yawrd.creation_preparation_versions",
+        "yawrd.creation_preparation_approvals",
+        "yawrd.creation_preparation_access",
+        "yawrd.creation_preparation_guard",
+        "yawrd.creation_preparation_read",
+        "yawrd.creation_preparation_save",
+        "yawrd.creation_preparation_approve"
+      ],
+      "hasOwnTransaction": false
+    },
+    {
+      "order": 8,
+      "path": "docs/proposals/migrations/phase2_creation_preparation_generation.sql",
+      "sha256": "49a9f032599990285b22159170aa28ece8f754cfca33d99079af6066ed34d94b",
+      "objects": [
+        "yawrd.creation_preparation_attempts",
+        "yawrd.creation_preparation_attempt_guard",
+        "yawrd.creation_preparation_attempt_read",
+        "yawrd.creation_preparation_reserve",
+        "yawrd.creation_preparation_stage",
+        "yawrd.creation_preparation_complete"
+      ],
+      "hasOwnTransaction": false
+    },
+    {
+      "order": 9,
+      "path": "docs/proposals/migrations/phase2_creation_preparation_intake_guard.sql",
+      "sha256": "83abccf2aabd1d6da19d10e20ea86c1372b5546e1cb99b15637b03083a7b3f41",
+      "objects": [
+        "yawrd.creation_intake_preparation_guard"
+      ],
+      "hasOwnTransaction": false
+    },
+    {
+      "order": 10,
+      "path": "docs/proposals/migrations/phase2_creation_contribution_configuration.sql",
+      "sha256": "f6d2f773b86952846873a10b28bf8d0b3466b4614fb57ecd99daf9385eb55132",
+      "objects": [
+        "yawrd.creation_contribution_configurations",
+        "yawrd.creation_contribution_guard",
+        "yawrd.creation_contribution_read",
+        "yawrd.creation_contribution_save"
+      ],
+      "hasOwnTransaction": false
+    },
+    {
+      "order": 11,
+      "path": "docs/proposals/migrations/phase2_creation_governance_configuration.sql",
+      "sha256": "4f4587f8b04115a37eec81c1782c653a58e3a1c5ff6eb221a301c6115cfbf6ed",
+      "objects": [
+        "yawrd.creation_governance_configurations",
+        "yawrd.creation_governance_guard",
+        "yawrd.creation_governance_read",
+        "yawrd.creation_governance_save"
+      ],
+      "hasOwnTransaction": false
+    },
+    {
+      "order": 12,
+      "path": "docs/proposals/migrations/phase2_creation_publication.sql",
+      "sha256": "0aaecec79a4783e41591687b28963269bb1faf192e5ed5f801f0260261d3b4bb",
+      "objects": [
+        "yawrd_publication",
+        "yawrd_publication.tickets",
+        "yawrd_publication.publications",
+        "yawrd_publication.context",
+        "yawrd_publication.issue",
+        "yawrd_publication.receipt",
+        "yawrd_publication.ticket",
+        "yawrd_publication.publish",
+        "yawrd_publication.public_yawrds"
+      ],
+      "hasOwnTransaction": false
+    }
+  ],
+  "excluded": [
+    "phase2_creation_launch_preparation.sql (superseded P3.8A)",
+    "phase2_creation_preparation_recovery.sql (pinned Development experiment)",
+    "phase2_platform_fee_foundation.sql (legacy separate foundation, not generalized Creation)"
+  ]
+}

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -12,8 +13,8 @@ import { PersistedYawrdContent } from '../app/components/persisted-yawrd.tsx';
 import { GenesisProjectPresentation } from '../app/components/genesis-project.tsx';
 import { GENESIS_YAW_001 } from '../src/genesis/yaw-001.ts';
 
-const production='e246d1094ebff7279dbc68b7b4245b7c08bdb2f4',exec=promisify(execFile);
-test('Genesis markup is byte-identical to the verified Production baseline and shared styles are unchanged',async()=>{
+const production='7e68e0ae5b60811cbb38723d00f67fc93a5c5835',exec=promisify(execFile);
+test('Genesis matches the release source and the accepted shared-shell snapshot is intact',async()=>{
   const {stdout:source}=await exec('git',['show',`${production}:app/components/genesis-project.tsx`]);
   const virtual=new URL('../app/components/genesis-project.tsx',import.meta.url).href+'?production-comparison';
   const hook=registerHooks({load(url,context,next){
@@ -24,9 +25,12 @@ test('Genesis markup is byte-identical to the verified Production baseline and s
     const baseline=await import(virtual);
     const project={...GENESIS_YAW_001,objectives:[...GENESIS_YAW_001.objectives]};
     assert.equal(renderToStaticMarkup(<GenesisProjectPresentation project={project}/>),renderToStaticMarkup(<baseline.GenesisProjectPresentation project={project}/>));
-    for(const path of ['app/components/genesis-project.module.css','app/components/project-space-shell.tsx','app/components/project-space-shell.module.css','components/ProjectProgress.tsx']){
+    for(const path of ['app/components/genesis-project.module.css','components/ProjectProgress.tsx']){
       const {stdout}=await exec('git',['show',`${production}:${path}`]);assert.equal(await readFile(path,'utf8'),stdout,path);
     }
+    const snapshot=JSON.parse(await readFile('test/fixtures/shared-shell-r2.json','utf8'));
+    for(const [path,digest] of Object.entries(snapshot.files))
+      assert.equal(createHash('sha256').update(await readFile(path)).digest('hex'),digest,path);
   }finally{hook.deregister();}
 });
 

@@ -65,8 +65,8 @@ export class RpcError extends Error {
 /** Public read-only RPC only; no transaction broadcast method is exposed. */
 export function createTestnetRpc(fetcher: typeof fetch = fetch): Rpc {
   return async (method, params) => {
-    if (!["status", "query", "EXPERIMENTAL_tx_status", "block", "chunk", "EXPERIMENTAL_receipt_to_tx"].includes(method)) throw new Error("Read-only RPC method required.");
-    const response = await fetcher("https://rpc.testnet.near.org", {
+    if (!["status", "query", "EXPERIMENTAL_tx_status", "block", "chunk", "EXPERIMENTAL_receipt_to_tx", "EXPERIMENTAL_protocol_config", "gas_price"].includes(method)) throw new Error("Read-only RPC method required.");
+    const response = await fetcher("https://test.rpc.fastnear.com", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: "yawrd-creation", method, params }), signal: AbortSignal.timeout(20000),
     });
@@ -77,24 +77,41 @@ export function createTestnetRpc(fetcher: typeof fetch = fetch): Rpc {
   };
 }
 
-function canonical(value: any): string {
+export function canonical(value: any): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (value && typeof value === "object") return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(",")}}`;
   return JSON.stringify(value);
 }
+// Sputnik stores role Group and permissions as sets. Their JSON array order
+// can change after initialization; no other policy array is order-independent.
+export function canonicalPolicy(value: any): string {
+  const policy = structuredClone(value);
+  if (Array.isArray(policy?.roles)) for (const role of policy.roles) {
+    for (const entries of [role?.kind?.Group, role?.permissions]) {
+      if (!Array.isArray(entries)) continue;
+      if (entries.some((entry: unknown) => typeof entry !== "string") || new Set(entries).size !== entries.length) throw new Error("Created project policy contains invalid or duplicate set entries.");
+      entries.sort();
+    }
+  }
+  return canonical(policy);
+}
 function decodeBase64(value: string): string { return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(atob(value), (c) => c.charCodeAt(0))); }
+
+export class DaoAccountCollisionError extends Error {
+  constructor() { super('This generated project address already exists. No wallet request was made.'); }
+}
 
 export class CreationRpc {
   private rpc: Rpc;
   constructor(rpc: Rpc) { this.rpc = rpc; }
   async network() { if ((await this.rpc("status", {})).chain_id !== "testnet") throw new Error("RPC network must be Testnet."); }
-  query(request_type: string, params: Record<string, unknown>) { return this.rpc("query", { request_type, finality: "final", ...params }); }
-  async view(account_id: string, method_name: string): Promise<any> {
-    const result = await this.query("call_function", { account_id, method_name, args_base64: "e30=" });
+  query(request_type: string, params: Record<string, unknown>, blockId?: string) { return this.rpc("query", { request_type, ...(blockId ? { block_id: blockId } : { finality: "final" }), ...params }); }
+  async view(account_id: string, method_name: string, blockId?: string): Promise<any> {
+    const result = await this.query("call_function", { account_id, method_name, args_base64: "e30=" }, blockId);
     return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(result.result)));
   }
-  async code(request_type: string, params: Record<string, unknown>, expected: string) {
-    const result = await this.query(request_type, params);
+  async code(request_type: string, params: Record<string, unknown>, expected: string, blockId?: string) {
+    const result = await this.query(request_type, params, blockId);
     // Hash the actual returned code, including code resolved through a global contract.
     const bytes = request_type === "call_function" ? Uint8Array.from(result.result) : Uint8Array.from(atob(result.code_base64), (c) => c.charCodeAt(0));
     const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
@@ -106,20 +123,32 @@ export class CreationRpc {
     for (const byte of digest) { if (byte !== 0) break; hash = "1" + hash; }
     if (hash !== expected) throw new Error("Contract code does not match the reviewed public build.");
   }
-  async preflight(p: PreparedCreation) {
+  private async preflightAt(p: PreparedCreation, blockId?: string) {
     await this.network();
-    await this.code("view_code", { account_id: p.settings.factoryAccountId }, p.settings.expectedFactoryCodeHash);
-    if (await this.view(p.settings.factoryAccountId, "get_default_code_hash") !== p.settings.expectedDaoCodeHash) throw new Error("Factory default project code has changed or is incompatible.");
-    await this.code("call_function", { account_id: p.settings.factoryAccountId, method_name: "get_code", args_base64: encodeBase64Utf8(JSON.stringify({ code_hash: p.settings.expectedDaoCodeHash })) }, p.settings.expectedDaoCodeHash);
-    await this.code("view_global_contract_code", { code_hash: p.settings.expectedDaoCodeHash }, p.settings.expectedDaoCodeHash);
-    for (const account_id of p.plan.initializer.policy.roles[0].kind.Group) await this.query("view_account", { account_id });
+    await this.code("view_code", { account_id: p.settings.factoryAccountId }, p.settings.expectedFactoryCodeHash, blockId);
+    if (await this.view(p.settings.factoryAccountId, "get_default_code_hash", blockId) !== p.settings.expectedDaoCodeHash) throw new Error("Factory default project code has changed or is incompatible.");
+    await this.code("call_function", { account_id: p.settings.factoryAccountId, method_name: "get_code", args_base64: encodeBase64Utf8(JSON.stringify({ code_hash: p.settings.expectedDaoCodeHash })) }, p.settings.expectedDaoCodeHash, blockId);
+    await this.code("view_global_contract_code", { code_hash: p.settings.expectedDaoCodeHash }, p.settings.expectedDaoCodeHash, blockId);
+    for (const account_id of p.plan.initializer.policy.roles[0].kind.Group) await this.query("view_account", { account_id }, blockId);
     try {
-      await this.query("view_account", { account_id: p.plan.daoAccountId });
+      await this.query("view_account", { account_id: p.plan.daoAccountId }, blockId);
     } catch (error) {
       if (error instanceof RpcError && (error.detail as any)?.cause?.name === "UNKNOWN_ACCOUNT") return;
       throw error;
     }
-    throw new Error("This project address already exists. Choose another label.");
+    throw new DaoAccountCollisionError();
+  }
+  async preflight(p: PreparedCreation) { await this.preflightAt(p); }
+  async inspectInterrupted(p: PreparedCreation, blockId?: number): Promise<{ blockHeight: number; blockHash: string }> {
+    const block = await this.rpc("block", blockId === undefined ? { finality: "final" } : { block_id: blockId });
+    const blockHeight = block?.header?.height;
+    const blockHash = block?.header?.hash;
+    if (!Number.isSafeInteger(blockHeight) || blockHeight <= 0 || !HASH.test(blockHash)) throw new Error("Finalized Testnet block evidence is unavailable.");
+    await this.preflightAt(p, blockHash);
+    const registry = await this.view(p.settings.factoryAccountId, "get_dao_list", blockHash);
+    if (!Array.isArray(registry) || registry.some((account) => typeof account !== "string")) throw new Error("Factory creation history could not be verified.");
+    if (registry.includes(p.plan.daoAccountId)) throw new Error("The factory registry already contains this project address. Do not retry; recover its transaction hash.");
+    return { blockHeight, blockHash };
   }
   async verify(p: PreparedCreation, hash: string): Promise<{ phase: "pending" | "confirmed" | "failed"; autoUpdate?: boolean }> {
     if (!HASH.test(hash)) throw new Error("Enter a valid transaction hash.");
@@ -151,7 +180,7 @@ export class CreationRpc {
       this.view(p.plan.daoAccountId, "get_config"), this.view(p.plan.daoAccountId, "get_policy"),
       this.view(p.plan.daoAccountId, "get_factory_info"), this.view(p.settings.factoryAccountId, "get_dao_list"),
     ]);
-    if (canonical(config) !== canonical(p.plan.initializer.config) || canonical(policy) !== canonical(p.plan.initializer.policy) || factory.factory_id !== p.settings.factoryAccountId || typeof factory.auto_update !== "boolean" || !Array.isArray(registry) || !registry.includes(p.plan.daoAccountId)) throw new Error("Created project state does not match the reviewed configuration.");
+    if (canonical(config) !== canonical(p.plan.initializer.config) || canonicalPolicy(policy) !== canonicalPolicy(p.plan.initializer.policy) || factory.factory_id !== p.settings.factoryAccountId || typeof factory.auto_update !== "boolean" || !Array.isArray(registry) || !registry.includes(p.plan.daoAccountId)) throw new Error("Created project state does not match the reviewed configuration.");
     return { phase: "confirmed", autoUpdate: factory.auto_update };
   }
 }

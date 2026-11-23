@@ -1,3 +1,6 @@
+import { PUBLIC_ID_PATTERN } from '../../../src/project-identity';
+import { publicGeneralizedYawrd } from '../../../src/creation/publication-public';
+import { YawrdIdentityPresentation } from '../../components/yawrd-identity-presentation';
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPublicYawrd } from "../../../src/public-yawrd";
@@ -23,6 +26,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return project ? { title: `${project.name} · Yawrd`, description: project.description }
       : { title: 'Yawrd project space', robots: { index: false, follow: false } };
   }
+  const generalized = await publicGeneralizedYawrd(database,id).catch(()=>null);
+  if(generalized) return {title:generalized.payload.name+' · Yawrd',description:generalized.payload.description};
   const fixture = getPublicYawrd(id);
   // Never query restricted data or render unpublished names in metadata.
   return { title: fixture ? `${fixture.name} · Yawrd preview` : "Yawrd project space", robots: { index: false, follow: false } };
@@ -39,6 +44,13 @@ export default async function PublicYawrdPage({ params }: Props) {
       </div></main>;
     }
     notFound();
+  }
+  if (PUBLIC_ID_PATTERN.test(projectId)) {
+    let generalized;
+    try { generalized = await publicGeneralizedYawrd(database,projectId); }
+    catch { return <main id="project-content"><p role="alert">Project temporarily unavailable. Please try again later.</p></main>; }
+    if (!generalized) notFound();
+    return <main id="project-content"><YawrdIdentityPresentation project={generalized.payload} creatorAccountId={generalized.creatorAccountId}/></main>;
   }
   const project = getPublicYawrd(projectId);
   let persisted = null;

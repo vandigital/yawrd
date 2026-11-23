@@ -1,1 +1,18 @@
-.heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem}.heading h2{font-family:Georgia,serif;font-size:clamp(2rem,4vw,3rem);margin:.5rem 0}.heading button{min-width:44px;min-height:44px;border:1px solid #377b78;border-radius:12px;margin-left:.5rem;background:#002b2b;color:#a9f1e9}.heading button:disabled{opacity:.35}.rail{display:flex;gap:1.25rem;overflow-x:auto;scroll-snap-type:x mandatory;padding:.25rem .25rem 1rem;position:relative;overscroll-behavior-x:contain}.card{flex:0 0 min(520px,88%);scroll-snap-align:start;border:1px solid #377b78;border-radius:20px;overflow:hidden;background:linear-gradient(130deg,#002b2b,#001e20)}.card img{width:100%;height:150px;object-fit:contain;background:#001e20}.card>div{padding:1.5rem}.card h3{font-family:Georgia,serif;font-size:2rem;margin:.75rem 0}.card p{color:#bed1c9;line-height:1.7}.card a{margin-top:1rem}.position{font-size:.8rem;color:#91b5aa;margin:1rem 0 0}.rail:focus-visible,.card:focus-visible,.heading button:focus-visible{outline:2px solid #a9f1e9;outline-offset:2px}@media(prefers-reduced-motion:reduce){.rail{scroll-behavior:auto}}
+.heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.heading h2 { font-family: Georgia, serif; font-size: clamp(2rem,4vw,3rem); margin: .5rem 0; }
+.heading button { min-width: 44px; min-height: 44px; border: 1px solid #377b78; border-radius: 12px; margin-left: .5rem; background: #002b2b; color: #a9f1e9; }
+.heading button:disabled { opacity: .35; }
+.rail { display: flex; gap: 1.25rem; overflow-x: auto; scroll-snap-type: x mandatory; padding: .25rem .25rem 1rem; position: relative; overscroll-behavior-x: contain; }
+.card { flex: 0 0 min(380px,88%); min-width: 0; display: flex; flex-direction: column; scroll-snap-align: start; border: 1px solid #377b78; border-radius: 20px; overflow: hidden; background: linear-gradient(130deg,#002b2b,#001e20); }
+.banner { height: 56px; flex: 0 0 56px; display: grid; place-items: center; overflow: hidden; background: linear-gradient(115deg,#285650,#193b36); }
+.banner img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.content { min-width: 0; display: flex; flex: 1; flex-direction: column; gap: .625rem; padding: 1rem; }
+.card p, .card h3 { margin: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.status { color: #bed1c9; font-size: .875rem; line-height: 1.4; height: 2.8em; }
+.card h3 { font-family: Georgia,serif; font-size: 1.5rem; line-height: 1.2; height: 2.4em; }
+.description { color: #bed1c9; font-size: .875rem; line-height: 1.5; height: 3em; }
+.card a { margin-top: auto; align-self: flex-start; min-height: 44px; max-width: 100%; overflow-wrap: anywhere; }
+.position { font-size: .8rem; color: #91b5aa; margin: 1rem 0 0; }
+.rail:focus-visible, .card:focus-visible, .heading button:focus-visible { outline: 2px solid #a9f1e9; outline-offset: 2px; }
+@media (max-width: 480px) { .heading { align-items: flex-start; flex-wrap: wrap; } }
+@media (prefers-reduced-motion: reduce) { .rail { scroll-behavior: auto; } }

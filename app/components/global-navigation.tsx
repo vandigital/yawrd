@@ -3,30 +3,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTestnetWallet } from "../use-testnet-wallet";
+import AccountAuthentication from "./account-authentication";
 import { AccountSlot } from "./route-account-controls";
-import { TestnetConsent } from "./testnet-consent";
-import styles from "./global-navigation.module.css";
 
-function WalletControls() {
-  const wallet = useTestnetWallet();
-  return <div className={styles.fallback}>
-    <p>{wallet.accountId ? "Connected wallet · Meteor" : "Wallet connection"}</p>
-    {wallet.accountId && <p className={styles.identity}>{wallet.accountId}</p>}
-    {wallet.accountIds.length > 1 && <label>Selected Testnet account
-      <select value={wallet.accountId ?? ""} disabled={wallet.busy} onChange={event => wallet.selectAccount(event.target.value)}>
-        {wallet.accountIds.map(id => <option key={id}>{id}</option>)}
-      </select>
-    </label>}
-    {!wallet.accountId && <TestnetConsent disabled={wallet.busy} />}
-    <button type="button" disabled={(!wallet.accountId && !wallet.termsAccepted) || wallet.busy || !wallet.ready || (!wallet.accountId && !wallet.available)} onClick={wallet.accountId ? wallet.disconnect : wallet.connect}>
-      {!wallet.ready ? "Preparing wallet…" : wallet.busy ? "Please wait…" : wallet.accountId ? "Disconnect wallet" : "Connect wallet"}
-    </button>
-    <p>Connecting a wallet does not sign you in. Verify a sign-in message inside a Yawrd or when opening one.</p>
-    {wallet.ready && !wallet.available && <p>Meteor is unavailable for Testnet connection.</p>}
-    {wallet.error && <p role="alert">{wallet.error}</p>}
-  </div>;
-}
+import styles from "./global-navigation.module.css";
 
 export function NavigationShell({ children }: { children: ReactNode }) {
   const [slot, setSlot] = useState<HTMLDivElement | null>(null);
@@ -82,8 +62,9 @@ export function NavigationShell({ children }: { children: ReactNode }) {
         </details>
         <details id="global-account" className={styles.account} name="global-disclosure">
           <summary>Account</summary>
-          <div ref={setSlot} className={styles.panel}>
-            {!occupied && <WalletControls />}
+          <div className={styles.panel}>
+            <div ref={setSlot}/>
+            {occupied ? <details><summary>Sign-in and renewal</summary><AccountAuthentication /></details> : <AccountAuthentication />}
           </div>
         </details>
       </div>
