@@ -12,7 +12,7 @@ const anchors=[{href:'#overview',label:'Overview'},{href:'#blueprint',label:'Blu
 export function WordWakeProjectPresentation({project}:{project:PublishedWordWake}) {
   return <div data-wordwake-project>
     <nav aria-label="Project navigation" className={styles.breadcrumb}><a href="/#discover">← Discover Yawrds</a><span aria-hidden="true">/</span><span>YAW-002</span></nav>
-    <ProjectSpaceShell eyebrow={<>YAW-002 <span>·</span> WordWake</>} title={project.name}
+    <ProjectSpaceShell compact eyebrow={<>YAW-002 <span>·</span> WordWake</>} title={project.name}
       tagline="An original letter-path game, built together."
       status="Published on Testnet · Join applications open"
       completion={{accepted:0,total:2,label:'deliverables accepted'}}

@@ -71,7 +71,7 @@ export function GenesisProjectPresentation({ project }: { project: PersistedProj
     <nav aria-label="Project navigation" className={styles.breadcrumb}>
       <a href="/#discover">← Discover Yawrds</a><span aria-hidden="true">/</span><span>{genesis.reference}</span>
     </nav>
-    <ProjectSpaceShell
+    <ProjectSpaceShell compact
       eyebrow={<>{genesis.reference} <span>·</span> Genesis project</>}
       title="Build Progress"
       tagline={genesis.tagline}

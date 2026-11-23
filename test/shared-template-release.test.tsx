@@ -14,7 +14,7 @@ import { GenesisProjectPresentation } from '../app/components/genesis-project.ts
 import { GENESIS_YAW_001 } from '../src/genesis/yaw-001.ts';
 
 const production='7e68e0ae5b60811cbb38723d00f67fc93a5c5835',exec=promisify(execFile);
-test('Genesis matches the release source and the accepted shared-shell snapshot is intact',async()=>{
+test('Genesis retains Production content and links while adopting the accepted compact shared shell',async()=>{
   const {stdout:source}=await exec('git',['show',`${production}:app/components/genesis-project.tsx`]);
   const virtual=new URL('../app/components/genesis-project.tsx',import.meta.url).href+'?production-comparison';
   const hook=registerHooks({load(url,context,next){
@@ -24,11 +24,17 @@ test('Genesis matches the release source and the accepted shared-shell snapshot 
   try{
     const baseline=await import(virtual);
     const project={...GENESIS_YAW_001,objectives:[...GENESIS_YAW_001.objectives]};
-    assert.equal(renderToStaticMarkup(<GenesisProjectPresentation project={project}/>),renderToStaticMarkup(<baseline.GenesisProjectPresentation project={project}/>));
+    const current=renderToStaticMarkup(<GenesisProjectPresentation project={project}/>);
+    assert.match(current, /class="shell compact"/);
+    // Only opt into the existing compact presentation. All facts, evidence and links stay identical.
+    assert.equal(current.replace('class="shell compact"','class="shell"'),renderToStaticMarkup(<baseline.GenesisProjectPresentation project={project}/>));
     for(const path of ['app/components/genesis-project.module.css','components/ProjectProgress.tsx']){
       const {stdout}=await exec('git',['show',`${production}:${path}`]);assert.equal(await readFile(path,'utf8'),stdout,path);
     }
-    const snapshot=JSON.parse(await readFile('test/fixtures/shared-shell-r2.json','utf8'));
+    // Keep the historical digest tied to the accepted, committed R2 baseline.
+    const {stdout:accepted}=await exec('git',['show','28301e16a46062b90197085e4b58e49bb34b0822:test/fixtures/shared-shell-r2.json']);
+    assert.equal(await readFile('test/fixtures/shared-shell-r2.json','utf8'),accepted);
+    const snapshot=JSON.parse(accepted);
     for(const [path,digest] of Object.entries(snapshot.files))
       assert.equal(createHash('sha256').update(await readFile(path)).digest('hex'),digest,path);
   }finally{hook.deregister();}
