@@ -118,7 +118,7 @@ test('public route/discovery adapter returns only the protected public projectio
   const h=harness(),calls:string[]=[];
   const query:Query=async sql=>{calls.push(sql);return [{id,creator_account_id:account,payload:{...h.payload,privateNotes:'PRIVATE',binding:h.source.binding},evidence:'PRIVATE'}];};
   const p=await publicGeneralizedYawrd(query,id);assert.deepEqual(p,{id,creatorAccountId:account,payload:h.payload});
-  assert.deepEqual(await discoverGeneralizedYawrds(query),[p]);assert.doesNotMatch(JSON.stringify(p),/PRIVATE|binding|evidence|privateNotes/);
+  assert.deepEqual(await discoverGeneralizedYawrds(query),[{...p,publishedAt:null}]);assert.doesNotMatch(JSON.stringify(p),/PRIVATE|binding|evidence|privateNotes/);
   assert.equal(await publicGeneralizedYawrd(query,'yaw-001'),null);
   assert.ok(calls.every(s=>s.includes('FROM yawrd_publication.public_yawrds')&&!s.includes('creation_')));
   assert.equal(await publicGeneralizedYawrd(async()=>{throw {code:'42P01'};},id),null);

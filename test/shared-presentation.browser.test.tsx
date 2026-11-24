@@ -27,7 +27,7 @@ test('all public project types share compact responsive heroes and uniform Disco
   const {WordWakeProjectPresentation}=await import('../app/components/wordwake-project.tsx');
   const {YawrdIdentityPresentation}=await import('../app/components/yawrd-identity-presentation.tsx');
   const {DiscoveryCarousel}=await import('../app/components/discovery-carousel.tsx');
-  const temporary=await mkdtemp('/tmp/yawrd-r37-presentation-');
+  const temporary=await mkdtemp('/tmp/yawrd-r38-presentation-');
   const synthetic:ProposedYawrdPreview={name:'Synthetic community workshop',description:'A synthetic public project for responsive presentation verification.',
     fundingPlan:'none-planned',progress:{accepted:null,planned:1},tasks:[{id:'T1',title:'First synthetic deliverable',summary:'A synthetic public summary.',
       dependencies:[],deliverables:['Synthetic guide'],allocation:'unallocated',rewardTerms:'undecided'}]};
@@ -36,9 +36,9 @@ test('all public project types share compact responsive heroes and uniform Disco
     wordwake:renderToStaticMarkup(<WordWakeProjectPresentation project={wordwake}/>),
     generalized:renderToStaticMarkup(<YawrdIdentityPresentation project={synthetic} creatorAccountId="synthetic-founder.testnet"/>)};
   const cards=renderToStaticMarkup(<DiscoveryCarousel projects={[
-    {id:'yaw-001',name:'Build Progress',description:'Completed Genesis work.',status:'Completed · Applications closed',lifecycle:'completed',image:'/landing/build-progress.webp'},
-    {id:'yaw-002',name:'WordWake',description:'Reviewed WordWake plan.',status:'Join applications open · Tasks not activated',lifecycle:'actionable',image:'/landing/build-progress.webp'},
-    {id:'yawrd-aaaaaaaaaaaa',name:synthetic.name,description:synthetic.description,status:'Published · Applications closed',lifecycle:'planned',image:'/landing/build-progress.webp'}]}/>);
+    {id:'yaw-001',name:'Build Progress',description:'Completed Genesis work.',lifecycle:'completed',image:'/landing/build-progress.webp'},
+    {id:'yaw-002',name:'WordWake',description:'Reviewed WordWake plan.',lifecycle:'active',publishedAt:'2026-11-16T00:00:00Z',reward:{amount:'2',currency:'Testnet NEAR'},image:'/landing/build-progress.webp'},
+    {id:'yawrd-aaaaaaaaaaaa',name:synthetic.name,description:synthetic.description,lifecycle:'active',publishedAt:'2026-11-24T00:00:00Z',image:'/landing/build-progress.webp'}]}/>);
   const utility=(await require('postcss')([require('@tailwindcss/postcss')()]).process(await readFile('app/globals.css','utf8'),{from:resolve('app/globals.css')})).css;
   // Match the CSS Module class mapping used by the offline loader above.
   const css=await Promise.all(['project-space-shell','genesis-project','yawrd-identity-presentation','discovery-carousel'].map(async name=>{
@@ -62,6 +62,9 @@ test('all public project types share compact responsive heroes and uniform Disco
         heroHeight:measure('.project_space_shell__hero')[0],bannerHeights:measure('#cards .discovery_carousel__banner'),cardHeights:measure('#cards .discovery_carousel__card'),
         bannerArtwork:[...document.querySelectorAll('#cards .discovery_carousel__banner')].map(e=>e.innerHTML),
         cardOrder:[...document.querySelectorAll('#cards .discovery_carousel__card a')].map(a=>a.getAttribute('href')),
+        lifecycleLabels:[...document.querySelectorAll('#cards .discovery_carousel__status')].map(e=>e.textContent),
+        rewardLabels:[...document.querySelectorAll('#cards .discovery_carousel__reward')].map(e=>e.textContent),
+        footerLayout:[...document.querySelectorAll('#cards .discovery_carousel__footer')].map(e=>{const a=e.querySelector('a').getBoundingClientRect(),r=e.querySelector('span').getBoundingClientRect();return {separate:a.right<=r.left,inside:r.right<=e.getBoundingClientRect().right+1,actionHeight:a.height};}),
         missingAnchors:[...document.querySelectorAll('.project_space_shell__anchorNav a')].filter(a=>!document.querySelector(a.getAttribute('href'))).map(a=>a.getAttribute('href'))};
       // ParticipantPanel renders this target separately on persisted pages.
       result.missingAnchors=result.missingAnchors.filter(h=>h!=='#crew-title');
@@ -87,7 +90,7 @@ test('all public project types share compact responsive heroes and uniform Disco
     await call('Page.enable');await call('Runtime.enable');
     const measurements=[];
     for(const key of Object.keys(pages))for(const width of [390,1440]){
-      const screenshot=`/tmp/yawrd-r37-${key}-${width}.png`;
+      const screenshot=`/tmp/yawrd-r38-${key}-${width}.png`;
       await call('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<500});
       await call('Page.navigate',{url:'http://127.0.0.1:'+address.port+'/'+key});
       let result:any;
@@ -101,16 +104,19 @@ test('all public project types share compact responsive heroes and uniform Disco
       if(key==='generalized'){
         const box=await call('Runtime.evaluate',{expression:"(()=>{const r=document.getElementById('cards').getBoundingClientRect();return {x:r.x+scrollX,y:r.y+scrollY,width:r.width,height:r.height,scale:1};})()",returnByValue:true});
         const coverShot=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:box.result.value});
-        await writeFile(`/tmp/yawrd-r37-discover-${width}.png`,Buffer.from(coverShot.data,'base64'));
+        await writeFile(`/tmp/yawrd-r38-discover-${width}.png`,Buffer.from(coverShot.data,'base64'));
       }
       assert.equal(result.compact,true);assert.equal(result.overflow,false,key+' '+width);
       assert.ok(result.heroHeight<340,key+' compact hero height');
       assert.equal(new Set(result.bannerArtwork).size,1,'all project types use the same branded cover');
       assert.ok(result.bannerArtwork.every((art:string)=>art.includes('<img')&&art.includes('/landing/build-progress.webp')));
       assert.deepEqual(result.bannerHeights,Array(3).fill(width<500?112:144));assert.equal(new Set(result.cardHeights).size,1);
-      assert.deepEqual(result.cardOrder,['/yawrd/yaw-002','/yawrd/yawrd-aaaaaaaaaaaa','/yawrd/yaw-001']);
+      assert.deepEqual(result.cardOrder,['/yawrd/yawrd-aaaaaaaaaaaa','/yawrd/yaw-002','/yawrd/yaw-001']);
+      assert.deepEqual(result.lifecycleLabels,['Active','Active','Completed']);
+      assert.deepEqual(result.rewardLabels,['Rewards: Not set','Rewards: 2 Testnet NEAR','Rewards: Not set']);
+      assert.ok(result.footerLayout.every((f:any)=>f.separate&&f.inside&&f.actionHeight>=44));
       assert.deepEqual(result.missingAnchors,[]);measurements.push({project:key,requestedWidth:width,screenshot,...result});
     }
-    await writeFile('/tmp/yawrd-r37-presentation-results.json',JSON.stringify(measurements,null,2)+'\n');
+    await writeFile('/tmp/yawrd-r38-presentation-results.json',JSON.stringify(measurements,null,2)+'\n');
   }finally{hook.deregister();ws?.close();if(browser&&browser.exitCode===null){const exited=new Promise(done=>browser!.once('exit',done));browser.kill('SIGKILL');await exited;}await new Promise<void>(done=>server.close(()=>done()));await rm(temporary,{recursive:true,force:true,maxRetries:5,retryDelay:100});}
 });

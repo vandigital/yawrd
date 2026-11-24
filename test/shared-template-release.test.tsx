@@ -105,6 +105,6 @@ test('auth diagnosis never serializes raw error details and origin failure perfo
 });
 test('discovery is compact, navigable, and quiet when no published projects are eligible',()=>{
   assert.equal(renderToStaticMarkup(<DiscoveryCarousel projects={[]}/>),'');
-  const html=renderToStaticMarkup(<DiscoveryCarousel projects={[{id:'yaw-001',name:'Build Progress',status:'Completed · Applications closed',description:'Accepted work',image:'/landing/build-progress.webp'},{id:'yaw-002',name:'WordWake',status:'Join applications open · Tasks not activated',description:'Reviewed work',image:'/brand/yawrd-buoy.webp'}]}/>);
-  for(const expected of ['carousel','Previous Yawrd','Next Yawrd','Completed','Tasks not activated','/yawrd/yaw-002'])assert.ok(html.includes(expected));
+  const html=renderToStaticMarkup(<DiscoveryCarousel projects={[{id:'yaw-001',name:'Build Progress',lifecycle:'completed',description:'Accepted work',image:'/landing/build-progress.webp'},{id:'yaw-002',name:'WordWake',lifecycle:'active',description:'Reviewed work',image:'/brand/yawrd-buoy.webp'}]}/>);
+  for(const expected of ['carousel','Previous Yawrd','Next Yawrd','Completed','Active','/yawrd/yaw-002'])assert.ok(html.includes(expected));
 });

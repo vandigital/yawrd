@@ -25,6 +25,10 @@ export async function publicGeneralizedYawrd(query: Query, id: string) {
   return row ? project(row) : null;
 }
 export async function discoverGeneralizedYawrds(query: Query) {
-  const rows = await read(query,'SELECT id,creator_account_id,payload FROM yawrd_publication.public_yawrds ORDER BY published_at DESC,id LIMIT 100');
-  return rows.map(project);
+  const rows = await read(query,'SELECT id,creator_account_id,payload,published_at FROM yawrd_publication.public_yawrds ORDER BY published_at DESC,id LIMIT 100');
+  return rows.map(row=>{
+    const value=row.published_at;
+    const date=value instanceof Date?value:typeof value==='string'?new Date(value):null;
+    return {...project(row),publishedAt:date&&Number.isFinite(date.getTime())?date.toISOString():null};
+  });
 }
