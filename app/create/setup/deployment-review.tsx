@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PrivateCreation } from '../../../src/creation/repository';
 import type { DeploymentIntent, DeploymentView } from '../../../src/creation/deployment-types';
-import { authorizedCreationDeployment, testnetFactorySettings } from '../../../src/testnet-factory-settings';
+import { testnetFactorySettings } from '../../../src/testnet-factory-settings';
 import { PLATFORM_FEE } from '../../../src/platform-fee/policy';
 import { useTestnetWallet } from '../../use-testnet-wallet';
 import { submitDeployment } from './deployment-submit';
@@ -48,10 +48,8 @@ export default function DeploymentReview({creation,disabled,onIdentifier,onRecor
   const retiredAttempt=intent?.state==='prepared' ? intent.costs?.retiredAttempts?.find(retired=>
     retired.attempt===intent.attempt&&retired.requestDigest===intent.requestDigest) : undefined;
   const p=intent?.prepared;
-  const allowed=authorizedCreationDeployment;
-  const submissionEnabled=!!view?.submissionEnabled&&creation.id===allowed.creationId&&
-    creation.founderAccountId===allowed.founderAccountId&&creation.network===allowed.network&&
-    intent?.daoAccountId===allowed.daoAccountId&&intent.requestDigest===allowed.requestDigest&&intent.attempt===allowed.nextAttempt-1&&!!retiredAttempt&&intent.state==='prepared';
+  const submissionEnabled=view?.submissionEnabled===true&&intent?.state==='prepared'&&!!p;
+  const nextAttempt=(intent?.attempt??0)+1;
   async function request(data?:object):Promise<DeploymentView> {
     const response=await fetch('/api/creations/'+creation.id+'/deployment',{
       method:data?'POST':'GET',credentials:'same-origin',cache:'no-store',
@@ -82,7 +80,7 @@ export default function DeploymentReview({creation,disabled,onIdentifier,onRecor
     setLaunchEvents([]);
     // Reserve synchronously in the founder click, before RPC or wallet lookups.
     const reservation=reserveMeteorAuthorizationWindow((event:WalletLaunchEvent)=>setLaunchEvents(events=>[...events,event]));
-    if(!reservation){setError('Meteor authorization was blocked. Allow popups for this Development app. No attempt was claimed and no wallet transaction was requested.');return;}
+    if(!reservation){setError('Meteor authorization was blocked. Allow popups for this site. No attempt was claimed and no wallet transaction was requested.');return;}
     launch.current=reservation;
     const current=generation.current;
     void run(()=>submitDeployment({creationRevision:creation.revision,founder:creation.founderAccountId,reviewed:intent,request,
@@ -110,8 +108,8 @@ export default function DeploymentReview({creation,disabled,onIdentifier,onRecor
       <button disabled={disabled||busy||!loaded||unresolved||completed} onClick={()=>void run(()=>request({action:'prepare',expectedRevision:creation.revision}))}>{busy?'Working…':'Prepare saved deployment — no wallet request'}</button>
       <button disabled={busy} onClick={()=>void run(()=>request())}>Reload deployment state</button>
     </div>
-    {intent&&<p role="status">{retiredAttempt?'Recovery complete: interrupted attempt '+retiredAttempt.attempt+' was retired. Its history is preserved. '+(submissionEnabled?'Attempt '+allowed.nextAttempt+' is authorized. Refresh the saved deployment review and confirm the costs before opening Meteor.':'Another wallet attempt requires separate founder authorization.'):completed?'Deployment verified and saved. Open the security review to check hardening.':unresolved?'A wallet request is unresolved. Signing is locked; check its transaction evidence.':intent.state==='failed'?'The attempt failed on Testnet. Another wallet attempt requires separate founder authorization.':intent.state==='reserved'?'Your account identifier is reserved in this Creation. Finish the deployment review before any wallet request.':'Your exact deployment request is saved. Review it before wallet approval.'}</p>}
-    {intent&&<p className={styles.help}>Saved account identifier: {intent.identifier}. Attempt {intent.attempt}. This identity is shared across your sessions; it is independent of your project’s display name.</p>}
+    {intent&&<p role="status">{retiredAttempt?'Recovery complete: interrupted attempt '+retiredAttempt.attempt+' was retired. Its history is preserved. '+(submissionEnabled?'Attempt '+nextAttempt+' is authorized. Refresh the saved deployment review and confirm the costs before opening Meteor.':'Another wallet attempt requires separate founder authorization.'):completed?'Deployment verified and saved. Open the security review to check hardening.':unresolved?'A wallet request is unresolved. Signing is locked; check its transaction evidence.':intent.state==='failed'?'The attempt failed on Testnet. Another wallet attempt requires separate founder authorization.':intent.state==='reserved'?'Your account identifier is reserved in this Creation. Finish the deployment review before any wallet request.':'Your exact deployment request is saved. Review it before wallet approval.'}</p>}
+    {intent&&<p className={styles.help}>Saved account identifier: {intent.identifier}. {intent.state==='prepared'?'Upcoming attempt '+nextAttempt:'Attempt '+intent.attempt}. This identity is shared across your sessions; it is independent of your project’s display name.</p>}
     {p&&<div className={styles.review}>
       <h3>Saved deployment request</h3><dl><dt>Account address</dt><dd>{intent.daoAccountId}</dd><dt>Project display name</dt><dd>{p.plan.initializer.config.name}</dd>
         <dt>Public project description</dt><dd className={styles.words}>{p.plan.initializer.config.purpose}</dd>
@@ -123,8 +121,8 @@ export default function DeploymentReview({creation,disabled,onIdentifier,onRecor
       <label className={styles.confirm}><input type="checkbox" checked={acknowledged} disabled={busy||unresolved||completed} onChange={e=>setAcknowledged(e.target.checked)}/>I reviewed this exact public request, both Stewards and the separate costs. Creating the account requires my approval in Meteor Wallet.</label>
       <details><summary>Review the exact unsigned wallet request</summary><pre className={styles.words}>{JSON.stringify(p.transaction,null,2)}</pre></details>
     </div>}
-    {loaded&&!submissionEnabled&&!unresolved&&!completed&&!retiredAttempt&&<p className={styles.attention}>Wallet submission is unavailable for this saved state. Only the specifically authorized Development Creation and exact request can be submitted once. Prepare the saved request and review the costs before continuing.</p>}
-    {submissionEnabled&&<p className={styles.attention}>Testnet deployment attempt {allowed.nextAttempt} is authorized for this saved request. The server will check it again and save the attempt before Meteor opens. You must personally approve the deposit and network fees in Meteor Wallet.</p>}
+    {loaded&&!submissionEnabled&&!unresolved&&!completed&&!retiredAttempt&&<p className={styles.attention}>Wallet submission is unavailable for this saved state. Prepare the saved request and review the costs before continuing. Wallet approval also requires server authorization.</p>}
+    {submissionEnabled&&<p className={styles.attention}>Testnet deployment attempt {nextAttempt} is authorized for this saved request. The server will check it again and save the attempt before Meteor opens. You must personally approve the deposit and network fees in Meteor Wallet.</p>}
     <div className={styles.unavailable}><button disabled={!submissionEnabled||!acknowledged||disabled||busy||unresolved||completed} onClick={()=>void submit()}>{submissionEnabled?'Open a Yawrd · approve in wallet':'Open a Yawrd · approve in wallet — unavailable'}</button><button disabled>Pay platform fee — unavailable</button></div>
     {unresolved&&<details open><summary>Recover an interrupted wallet request</summary>
       <p>Keep the same account identifier. Find the transaction reference in your wallet and check its evidence. A rejection or missing response alone cannot unlock another signing request.</p>
