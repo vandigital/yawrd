@@ -27,7 +27,7 @@ test('all public project types share compact responsive heroes and uniform Disco
   const {WordWakeProjectPresentation}=await import('../app/components/wordwake-project.tsx');
   const {YawrdIdentityPresentation}=await import('../app/components/yawrd-identity-presentation.tsx');
   const {DiscoveryCarousel}=await import('../app/components/discovery-carousel.tsx');
-  const temporary=await mkdtemp('/tmp/yawrd-r21-presentation-');
+  const temporary=await mkdtemp('/tmp/yawrd-r21-covers-presentation-');
   const synthetic:ProposedYawrdPreview={name:'Synthetic community workshop',description:'A synthetic public project for responsive presentation verification.',
     fundingPlan:'none-planned',progress:{accepted:null,planned:1},tasks:[{id:'T1',title:'First synthetic deliverable',summary:'A synthetic public summary.',
       dependencies:[],deliverables:['Synthetic guide'],allocation:'unallocated',rewardTerms:'undecided'}]};
@@ -60,6 +60,7 @@ test('all public project types share compact responsive heroes and uniform Disco
       const measure=selector=>[...document.querySelectorAll(selector)].map(e=>Math.round(e.getBoundingClientRect().height));
       const result={width:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth,compact:!!document.querySelector('.project_space_shell__shell.project_space_shell__compact'),
         heroHeight:measure('.project_space_shell__hero')[0],bannerHeights:measure('#cards .discovery_carousel__banner'),cardHeights:measure('#cards .discovery_carousel__card'),
+        bannerArtwork:[...document.querySelectorAll('#cards .discovery_carousel__banner')].map(e=>e.innerHTML),
         cardOrder:[...document.querySelectorAll('#cards .discovery_carousel__card a')].map(a=>a.getAttribute('href')),
         missingAnchors:[...document.querySelectorAll('.project_space_shell__anchorNav a')].filter(a=>!document.querySelector(a.getAttribute('href'))).map(a=>a.getAttribute('href'))};
       // ParticipantPanel renders this target separately on persisted pages.
@@ -86,7 +87,7 @@ test('all public project types share compact responsive heroes and uniform Disco
     await call('Page.enable');await call('Runtime.enable');
     const measurements=[];
     for(const key of Object.keys(pages))for(const width of [390,1440]){
-      const screenshot=`/tmp/yawrd-r21-${key}-${width}.png`;
+      const screenshot=`/tmp/yawrd-r21-covers-${key}-${width}.png`;
       await call('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:width<500});
       await call('Page.navigate',{url:'http://127.0.0.1:'+address.port+'/'+key});
       let result:any;
@@ -97,12 +98,19 @@ test('all public project types share compact responsive heroes and uniform Disco
       assert.ok(result,key+' layout result');assert.equal(result.width,width,'actual viewport matches requested width');
       const shot=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});
       await writeFile(screenshot,Buffer.from(shot.data,'base64'));
+      if(key==='generalized'){
+        const box=await call('Runtime.evaluate',{expression:"(()=>{const r=document.getElementById('cards').getBoundingClientRect();return {x:r.x+scrollX,y:r.y+scrollY,width:r.width,height:r.height,scale:1};})()",returnByValue:true});
+        const coverShot=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:box.result.value});
+        await writeFile(`/tmp/yawrd-r21-covers-discover-${width}.png`,Buffer.from(coverShot.data,'base64'));
+      }
       assert.equal(result.compact,true);assert.equal(result.overflow,false,key+' '+width);
       assert.ok(result.heroHeight<340,key+' compact hero height');
+      assert.equal(new Set(result.bannerArtwork).size,1,'all project types use the same branded cover');
+      assert.ok(result.bannerArtwork.every((art:string)=>art.includes('<svg')&&!art.includes('<img')));
       assert.deepEqual(result.bannerHeights,[56,56,56]);assert.equal(new Set(result.cardHeights).size,1);
       assert.deepEqual(result.cardOrder,['/yawrd/yaw-002','/yawrd/yawrd-aaaaaaaaaaaa','/yawrd/yaw-001']);
       assert.deepEqual(result.missingAnchors,[]);measurements.push({project:key,requestedWidth:width,screenshot,...result});
     }
-    await writeFile('/tmp/yawrd-r21-presentation-results.json',JSON.stringify(measurements,null,2)+'\n');
+    await writeFile('/tmp/yawrd-r21-covers-presentation-results.json',JSON.stringify(measurements,null,2)+'\n');
   }finally{hook.deregister();ws?.close();if(browser&&browser.exitCode===null){const exited=new Promise(done=>browser!.once('exit',done));browser.kill('SIGKILL');await exited;}await new Promise<void>(done=>server.close(()=>done()));await rm(temporary,{recursive:true,force:true,maxRetries:5,retryDelay:100});}
 });

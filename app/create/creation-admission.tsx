@@ -23,6 +23,7 @@ export default function CreationAdmission({ children }: { children: ReactNode })
 function AdmissionCheck({ children }: { children: ReactNode }) {
   const wallet = useTestnetWallet();
   const [session, setSession] = useState<Admission | null>(null);
+  const [disabled, setDisabled] = useState(false);
   const [checking, setChecking] = useState(true), [error, setError] = useState('');
   const epoch = useRef(0), pending = useRef<AbortController | null>(null);
   const mismatch = !!session?.accountId && !!wallet.accountId &&
@@ -32,9 +33,15 @@ function AdmissionCheck({ children }: { children: ReactNode }) {
     pending.current?.abort();
     const controller = new AbortController(); pending.current = controller;
     if (clear) setSession(null);
-    setChecking(true); setError('');
+    setChecking(true); setError(''); setDisabled(false);
     try {
       const response = await fetch('/api/creations/admission', { credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
+      if (response.status === 404) {
+        const value = await response.json();
+        if (version !== epoch.current) return;
+        // The existing server gate deliberately returns this response when closed.
+        if (value?.error === 'not_found') { setSession(null); setDisabled(true); return; }
+      }
       if (!response.ok) throw Error('unavailable');
       const value: Admission = await response.json();
       if (version !== epoch.current) return;
@@ -69,6 +76,7 @@ function AdmissionCheck({ children }: { children: ReactNode }) {
     <section className={styles.admission} aria-labelledby="creation-admission-title">
       <p className={styles.eyebrow}>Open a Yawrd · Testnet</p>
       {checking ? <><h1 id="creation-admission-title">Opening Creation</h1><p role="status">Checking your sign-in…</p></>
+        : disabled ? <><h1 id="creation-admission-title">Opening a Yawrd is not available yet</h1><p>Creation is currently turned off on this site. You can still explore published Yawrds.</p><a className={styles.explore} href="/#discover">Explore Yawrds</a></>
         : error ? <><h1 id="creation-admission-title">Check your sign-in</h1><p role="alert">{error}</p><button onClick={() => void refresh()}>Try again</button></>
         : mismatch ? <><h1 id="creation-admission-title">Check your selected account</h1><p>Your connected wallet differs from your verified sign-in. Sign in with the selected account to continue.</p><AccountAuthentication /></>
         : session?.accountId ? <><h1 id="creation-admission-title">Opening a Yawrd is currently invite-only.</h1><a className={styles.explore} href="/#discover">Explore Yawrds</a>
