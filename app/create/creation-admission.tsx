@@ -66,9 +66,10 @@ function AdmissionCheck({ children }: { children: ReactNode }) {
   }, [session?.expiresAt]);
 
   if (session?.accountId && session.admitted === true && !mismatch) return <>
-    {checking && <p role="status">Checking your sign-in…</p>}
-    {/* Hide and suspend interaction during refresh without discarding unsaved edits. */}
-    <div hidden={checking} inert={checking} aria-busy={checking}>
+    <span role="status" className={styles.sessionStatus}>{checking ? 'Checking your sign-in…' : ''}</span>
+    {/* A still-authorized session keeps its layout and focus during background checks.
+        Explicit session changes, wallet mismatch, expiry and failures still clear access. */}
+    <div aria-busy={checking}>
       <CreationAccount.Provider value={session.accountId}>{children}</CreationAccount.Provider>
     </div>
   </>;

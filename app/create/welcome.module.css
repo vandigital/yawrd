@@ -38,3 +38,11 @@
 .admission { max-width: 640px; margin: clamp(24px, 8vh, 80px) auto; padding: clamp(24px, 4vw, 40px); border: 1px solid #377b78; border-radius: 20px; background: linear-gradient(130deg, #002b2b, #001e20); line-height: 1.7; overflow-wrap: anywhere; }
 .admission h1 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(28px, 4vw, 40px); line-height: 1.2; }
 .explore { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 20px; margin-top: 12px; border: 1px solid #51afa7; border-radius: 12px; color: #a9f1e9; text-decoration: none; }
+
+.sessionStatus { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.securityLinks { display: grid; gap: 16px; margin-top: 16px; padding: 0; list-style: none; }
+.securityLinks li { min-width: 0; }
+.securityAction { display: flex; align-items: center; min-height: 48px; padding: 12px 18px; border: 1px solid #a9f1e9; border-radius: 12px; background: #a9f1e9; color: #002026; font-weight: 650; text-decoration: none; overflow-wrap: anywhere; }
+.securityAction:hover { background: #c7fff6; }
+.securityAction:focus-visible { outline: 2px solid #a9f1e9; outline-offset: 4px; }
+.securityLinks small { display: block; margin-top: 6px; overflow-wrap: anywhere; }

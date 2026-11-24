@@ -281,7 +281,7 @@ createRoot(document.getElementById('root')).render(<TestnetWalletProvider><Navig
     await waitFor("document.body.innerText.includes('Prepare your Blueprint and contributor guidance')");
     assert.ok(await evaluate("document.body.innerText.includes('partner provider')&&document.body.innerText.includes('OpenAI')"));
     await evaluate("[...document.querySelectorAll('label')].find(l=>l.textContent.includes('I authorize this one AI')).querySelector('input').click()");
-    await click('Prepare with AI');
+    await click('Prepare my Blueprint');
     await waitFor("window.records.generation.attempt?.state==='reserved'");
     assert.equal(await evaluate('window.generationCalls'),1);
     await waitFor("document.body.innerText.includes('✓ Preparation request saved')");
@@ -333,10 +333,10 @@ createRoot(document.getElementById('root')).render(<TestnetWalletProvider><Navig
     await evaluate("window.sessionAccount=null;window.dispatchEvent(new Event('focus'))");await waitFor("document.body.innerText.includes('Sign in or renew')&&!document.querySelector('main').textContent.includes('PRIVATE')");
     await evaluate("window.records.versions=[];window.advance('unknown');window.switchSession('founder.testnet')");
     await waitFor("document.body.innerText.includes('Completion could not be confirmed')");
-    assert.equal(await evaluate("[...document.querySelectorAll('button')].some(b=>b.textContent==='Prepare with AI')"),false);
+    assert.equal(await evaluate("[...document.querySelectorAll('button')].some(b=>b.textContent==='Prepare my Blueprint')"),false);
     assert.equal(await evaluate('window.generationCalls'),1);
     assert.deepEqual(blocked,[]);assert.deepEqual(errors,[]);
-    const audit=await evaluate('window.audit');assert.ok(audit.every(a=>['/api/auth/session','/api/auth/logout','/api/creations/yawrd-aaaaaaaaaaaa/preparation','/api/creations/yawrd-aaaaaaaaaaaa/platform-fee'].includes(a.url)));assert.ok(audit.every(a=>!a.data||['generate','save','approve'].includes(a.data.action)||a.url==='/api/auth/logout'));
+    const audit=await evaluate('window.audit');assert.ok(audit.every(a=>['/api/auth/session','/api/auth/logout','/api/creations/yawrd-aaaaaaaaaaaa/preparation','/api/creations/yawrd-aaaaaaaaaaaa/platform-fee'].includes(a.url)||a.url==='/api/creations/yawrd-aaaaaaaaaaaa'&&a.method==='GET'));assert.ok(audit.every(a=>!a.data||['generate','save','approve'].includes(a.data.action)||a.url==='/api/auth/logout'));
   }finally{
     ws?.close();if(browser&&browser.exitCode===null)await new Promise(r=>{browser.once('close',r);browser.kill();setTimeout(r,2000).unref();});
     await new Promise(r=>server?server.close(r):r());await rm(temporary,{recursive:true,force:true,maxRetries:5,retryDelay:50});

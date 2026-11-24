@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import styles from './welcome.module.css';
 type SecurityLink = { id: string; name: string; daoAccountId: string };
 /** A second Steward can discover only public, deployed security pages. */
 export default function SecurityCreations({ accountId }: { accountId: string }) {
@@ -14,7 +15,7 @@ export default function SecurityCreations({ accountId }: { accountId: string }) 
   }, [accountId, retry]);
   return <section aria-label="Your Steward security pages">
     {items.length > 0 && <><h3>Yawrd security · for Stewards</h3><p>Review security and approvals here. These pages do not show private project answers.</p>
-      {items.map(item => <p key={item.id}><a href={'/create/' + item.id + '/secure'}>Security: {item.name}</a><br/><small>{item.daoAccountId}</small></p>)}</>}
+      <ul className={styles.securityLinks}>{items.map(item => <li key={item.id}><a className={styles.securityAction} href={'/create/' + item.id + '/secure'}>Review security — {item.name}</a><small>{item.daoAccountId}</small></li>)}</ul></>}
     {failed && <p>Steward security links could not be loaded. <button onClick={() => setRetry(n => n + 1)}>Retry security links</button></p>}
   </section>;
 }
