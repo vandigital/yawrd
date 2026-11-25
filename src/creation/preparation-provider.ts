@@ -3,7 +3,7 @@ import { fail, WorkflowError } from '../participants/repository.ts';
 import { PREPARATION_SCHEMA, validatePreparation, preparationIssues, preparationSkill } from './preparation-contract.ts';
 import { INPUT_BYTES,OUTPUT_TOKENS,PROVIDER_TIMEOUT,PREPARATION_PROMPT,QWEN_MODEL,PREMIUM_MODEL,type PreparationModel,type GenerationUsage,type GeneratedPreparation } from './preparation-generation-contract.ts';
 import type { PreparationContext } from './preparation-context.ts';
-import { ORIGINAL_LIMITS, RECOVERY_PROMPT, type GenerationLimits } from './preparation-generation-contract.ts';
+import { ORIGINAL_LIMITS, HOSTED_SOL_LIMITS, HOSTED_SOL_PROMPT, RECOVERY_PROMPT, type GenerationLimits } from './preparation-generation-contract.ts';
 
 // Reused transport/validation rules from the proven WordWake adapters; project policy is generalized.
 const text={type:'string',maxLength:12000};
@@ -24,14 +24,17 @@ No tools, network access, spending, publication, reward authorization, task acti
 export const premiumMatches=(v:unknown)=>v===PREMIUM_MODEL||v==='gpt-6.1-sol';
 export function preparationWire(context:PreparationContext,model:PreparationModel,limits:GenerationLimits=ORIGINAL_LIMITS){
   fail(model===QWEN_MODEL||model===PREMIUM_MODEL,'generation_model_not_allowed',400);
-  fail(limits.outputTokens===8000&&limits.providerTimeoutMs===180000||model===PREMIUM_MODEL&&limits.outputTokens===16000&&limits.providerTimeoutMs===420000,'generation_limits_invalid');
+  fail(limits.outputTokens===8000&&limits.providerTimeoutMs===180000||model===PREMIUM_MODEL&&limits.outputTokens===16000&&(limits.providerTimeoutMs===420000||limits.providerTimeoutMs===HOSTED_SOL_LIMITS.providerTimeoutMs),'generation_limits_invalid');
   // Explicit allowlist: private source/binding digests and record identifiers stay
   // in the durable server snapshot, outside the provider's project context.
   const input=JSON.stringify({schema:context.schema,project:context.project,
     founderRequirements:context.founderRequirements,founderReportedResources:context.founderReportedResources,
     budget:context.budget,verifiedFacts:context.verifiedFacts,routineDefaults:context.routineDefaults,
     materialDecisions:context.materialDecisions,activationDetails:context.activationDetails,boundaries:context.boundaries});
-  const instructions=(limits.outputTokens===16000?GENERATION_INSTRUCTIONS.replace(PREPARATION_PROMPT,RECOVERY_PROMPT):GENERATION_INSTRUCTIONS)+(limits.outputTokens===16000?'\nRecovery output discipline: define shared interfaces and fixtures once in references; tasks cite their IDs. Skill instructions guide contributor work without repeating the entire Blueprint or task list. State source facts once, not in every section. Use concise actionable clauses. Retain every required source constraint, interface, deliverable, dependency and acceptance/evidence check; do not shrink scope to fit.':'');
+  const hosted=limits.providerTimeoutMs===HOSTED_SOL_LIMITS.providerTimeoutMs;
+  const discipline='\nRecovery output discipline: define shared interfaces and fixtures once in references; tasks cite their IDs. Skill instructions guide contributor work without repeating the entire Blueprint or task list. State source facts once, not in every section. Use concise actionable clauses. Retain every required source constraint, interface, deliverable, dependency and acceptance/evidence check; do not shrink scope to fit.';
+  const instructions=(limits.outputTokens===16000?GENERATION_INSTRUCTIONS.replace(PREPARATION_PROMPT,hosted?HOSTED_SOL_PROMPT:RECOVERY_PROMPT):GENERATION_INSTRUCTIONS)
+    +(limits.outputTokens===16000?(hosted?discipline.replace('Recovery output discipline','Output discipline'):discipline):'');
   const request=model===QWEN_MODEL?{model,messages:[{role:'system',content:instructions},{role:'user',content:input}],chat_template_kwargs:{enable_thinking:false},max_tokens:limits.outputTokens,n:1,stream:false,temperature:0.2}:
     {model,input,instructions,store:false,stream:false,tools:[],max_output_tokens:limits.outputTokens};
   const body=JSON.stringify(request);fail(Buffer.byteLength(body,'utf8')<=INPUT_BYTES,'generation_input_too_large',413);

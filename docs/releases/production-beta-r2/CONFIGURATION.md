@@ -33,18 +33,22 @@ The founder allowlist grants only admission. Independently authorize each action
 | `YAWRD_ENABLE_CREATION_DEPLOYMENT=1` | Fresh first deployment attempt only, owner/allowlist bound; current revision and exact prepared request, fresh preflight, cost consent and durable CAS still required. Unknown/failed/retired attempts cannot sign again. |
 | `YAWRD_ENABLE_CREATION_HARDENING=1` | Existing security POST actions, with saved two-Steward identity, proposal, consent and finalized-state checks. Read-only security status remains separate. |
 | `YAWRD_ENABLE_CREATION_PLATFORM_FEE_PAYMENT=1` | Existing pinned 0.5 Testnet NEAR transfer workflow; receipt reads/reconciliation do not authorize another transfer. |
-| `YAWRD_ENABLE_CREATION_PREPARATION=1` | Existing normal generation allowance/model (`Qwen/Qwen3.8-27B`), bounded context, explicit consent and one reserved request. Provider key remains server-only in the existing `YAWRD_NEAR_AI_API_KEY` setting. No request was made. |
+| `YAWRD_ENABLE_CREATION_PREPARATION=1` | Hosted generation uses `openai/gpt-6.1-sol` through NEAR AI Cloud Responses, 16,000 output tokens and a 240-second provider deadline, after the separately pinned R4.2C SQL compatibility patch. OpenAI partner disclosure/consent and one reserved request remain mandatory; no Qwen fallback. Provider key remains server-only in the existing `YAWRD_NEAR_AI_API_KEY` setting. No request was made. |
 | `YAWRD_ENABLE_CREATION_PUBLICATION=1` | Fresh exact-source/payload NEP-413 challenge and publication through isolated writer. When off, durable receipt recovery remains available, while new consent/writes are denied. |
 
 Existing Development authorization/recovery pins remain Development-only.
 `YAWRD_ENABLE_CREATION_PREMIUM_TEST` must be absent in release environments; its
 single-Creation premium experiment and recovery cannot authorize Production or
-Preview inference. A generalized premium/recovery policy is outside R2.
+Preview inference. R4.2C separately proposes standard hosted Sol generation; it does
+not add hosted recovery or install the Development recovery experiment.
 No browser-selected model, account, amount, recipient or enable flag is trusted.
 No Mainnet path or new infrastructure is introduced.
 
-Hosted normal preparation declares `maxDuration=300`: its provider deadline is
-180 seconds, leaving validation/storage margin. The 420-second premium recovery
+Hosted preparation declares `maxDuration=300`: R4.2C proposes a 240-second provider
+timeout, leaving 60 seconds for other route work, with a 270-second persisted
+observation window after reservation. Its 16,000-token budget follows the successful
+Development recovery; this does not establish that every hosted request finishes
+within 240 seconds. The 420-second premium recovery
 remains on the accepted local Development path. Confirm Vercel Fluid compute and
 an effective duration of at least 300 seconds before generating the Preview
 (the declared route duration must be supported), and before enabling generation.

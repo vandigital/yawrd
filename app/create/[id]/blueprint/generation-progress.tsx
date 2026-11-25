@@ -1,12 +1,12 @@
 'use client';
 import { useEffect,useState } from 'react';
-import { activeAttempt,observedAttempt,PREMIUM_MODEL,RECOVERY_CONSENT,type GenerationView } from '../../../../src/creation/preparation-generation-contract';
+import { activeAttempt,observedAttempt,RECOVERY_CONSENT,type GenerationView } from '../../../../src/creation/preparation-generation-contract';
 import ui from './preparation.module.css';
 
 export function GenerationProgress({generation:g,running,onGenerate,onCheck,onRecover,statusFeedback}:{generation:GenerationView;running:boolean;onGenerate:(consentVersion:string)=>void;onCheck:()=>void;onRecover?:(consentVersion:string)=>void;statusFeedback?:{text:string;at:string}|null}){
   const [consent,setConsent]=useState(false);
   const [now,setNow]=useState(Date.now);
-  useEffect(()=>setConsent(false),[g.model,g.attempt?.id,g.recovery?.canRecover]);
+  useEffect(()=>setConsent(false),[g.model,g.outputTokensLimit,g.providerTimeoutMs,g.attempt?.id,g.recovery?.canRecover]);
   useEffect(()=>{if(!g.attempt)return;const timer=setTimeout(()=>setNow(Date.now()),Math.max(0,Date.parse(g.attempt.deadlineAt)-Date.now())+1);return()=>clearTimeout(timer);},[g.attempt?.id,g.attempt?.deadlineAt]);
   const a=observedAttempt(g.attempt,now);
   const feedback=a?.state==='unknown'&&g.attempt?.state!=='unknown'?{text:'Uncertain — observation window expired; completion not confirmed',at:new Date(now).toISOString()}:statusFeedback;
@@ -16,9 +16,8 @@ export function GenerationProgress({generation:g,running,onGenerate,onCheck,onRe
     <h2>{a?.state==='failed'?'Preparation failed — no Blueprint saved':a?.state==='unknown'?'Preparation uncertain — completion not confirmed':a?.state==='saved'?'Your preparation is saved':a?'AI preparation status':'Prepare your Blueprint and contributor guidance'}</h2>
     {!a&&<>
       <p>One request prepares your Blueprint, a self-contained contributor Skill and draft task briefs for private review.</p>
-      {!g.canGenerate&&<p className={ui.model}>Planned first controlled test: GPT-6.1 Sol <small>({PREMIUM_MODEL}) through NEAR AI Cloud, routed to OpenAI.</small></p>}
-      {g.canGenerate&&<p className={ui.model}>Server-selected model: {g.model}</p>}
-      {g.canGenerate&&<p>Your private answers will be sent to NEAR AI Cloud. {g.partnerProvider?'This request routes them to OpenAI, a partner provider, under its terms. There is no hardware privacy guarantee.':'This request uses Qwen on NEAR AI Cloud; it is not the planned GPT premium test.'}</p>}
+      <p className={ui.model}>{g.canGenerate?'Server-selected model':'Configured model (requests disabled)'}: {g.model}</p>
+      {g.canGenerate&&<p>Your private answers will be sent to NEAR AI Cloud. {g.partnerProvider?'This request routes them to OpenAI, a partner provider, under its terms. There is no hardware privacy guarantee.':'This request uses Qwen on NEAR AI Cloud.'}</p>}
       <p>Provider credits may be charged for this one request. No wallet transaction is needed. There is no automatic retry or fallback.</p>
       <p>Generation stays private. It does not activate tasks, rewards or publication.</p>
       {g.canGenerate?<><label className={ui.consent}><input type="checkbox" checked={consent} disabled={running} onChange={e=>setConsent(e.target.checked)}/>I authorize this one AI preparation request and disclosure of my private project answers{g.partnerProvider?' to OpenAI through NEAR AI Cloud':''}. Provider charges may apply, including if interrupted. There is no automatic retry. This does not approve the output.</label>
@@ -33,11 +32,12 @@ export function GenerationProgress({generation:g,running,onGenerate,onCheck,onRe
       {a.state!=='saved'&&<div><button onClick={onCheck}>Check preparation status</button><p role="status" aria-live="polite">{feedback?feedback.text:a.state==='failed'?'Failed — no Blueprint saved':a.state==='unknown'?'Uncertain — completion not confirmed':'Preparing — last confirmed stage shown'} · {feedback?'Observed: '+feedback.at:'Last confirmed: '+(a.finishedAt??a.responseAt??a.dispatchedAt??a.reservedAt)}</p></div>}
       {g.recovery?.canRecover&&onRecover&&<section aria-label="Authorize one recovery"><h3>One controlled recovery</h3><p>The original failed request is preserved. This separately authorized request reuses the same paid Yawrd and saved revision 7. Private answers go through NEAR AI Cloud to OpenAI, under the partner's terms, without a hardware privacy guarantee. Provider credits may be charged. No new wallet payment is required.</p><label><input type="checkbox" checked={consent} disabled={running} onChange={e=>setConsent(e.target.checked)}/>I authorize one recovery request using the revised limits below. There is no automatic retry, including if interrupted, and this grants no publication or reward authority.</label><button className={ui.primary} disabled={running||!consent} onClick={()=>{setConsent(false);onRecover(RECOVERY_CONSENT);}}>Prepare my Blueprint — one recovery</button></section>}
       {g.recovery?.originalAttempt&&<details><summary>Original failed request</summary><p>Failed · {g.recovery.originalAttempt.errorCode} · {g.recovery.originalAttempt.usage?.tokens?.output??'Unknown'} output tokens, including {g.recovery.originalAttempt.usage?.tokens?.reasoning??'unknown'} reasoning tokens. Original record retained unchanged.</p></details>}
-      <p>Last confirmed: {a.finishedAt??a.responseAt??a.dispatchedAt??a.reservedAt}</p>
+      <p>Last confirmed: {a.finishedAt??a.responseAt??a.dispatchedAt??a.reservedAt}</p><p>Observation deadline: {a.deadlineAt}. Expiry does not authorize another request.</p>
     </>}
     <details><summary>AI request details — cost and limits</summary>
       {g.recovery?.canRecover&&<p>Recovery limits below apply only to the new, explicitly authorized request. The original failure used an 8,000-token limit and a 180-second provider deadline.</p>}
       <ul><li>{g.canGenerate||a?'Server-selected model':'Configured model (requests disabled)'}: {g.model}</li>
+      <li>Provider: NEAR AI Cloud{g.partnerProvider?' → OpenAI (partner provider)':' (Qwen)'}.</li>
       <li>Provider credits pay for the request; charges depend on the selected model and provider account.</li>
       <li>One request, with no automatic retry. Private answers go to the disclosed provider.</li>
       <li>Complete input: up to {g.inputBytesLimit.toLocaleString()} bytes. Output: up to {g.outputTokensLimit.toLocaleString()} tokens, including reasoning.</li>

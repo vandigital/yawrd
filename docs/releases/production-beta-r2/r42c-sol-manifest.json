@@ -1,0 +1,22 @@
+{
+  "status": "founder-approved; exact patch reported committed on isolated Preview; Production remains separate",
+  "baseCommit": "ef882a17b913e969a25b7bf359dfcd7588f1d896",
+  "path": "docs/proposals/migrations/phase2_creation_preparation_hosted_sol.sql",
+  "sha256": "a43841a4078f4b54c3906af85705d37e66481400de6f8b295dab41ba031ebf4c",
+  "hasOwnTransaction": true,
+  "requires": "accepted P3.5B generation plus intake guard; existing trusted function owner",
+  "profile": {
+    "model": "openai/gpt-6.1-sol",
+    "prompt": "creation-hosted-sol-v1",
+    "outputTokens": 16000,
+    "providerTimeoutMs": 240000,
+    "observationWindowMs": 270000
+  },
+  "dataUpdates": false,
+  "roleOrGrantChanges": false,
+  "previewInstallation": {
+    "endpoint": "ep-morning-silence-ao4iosb9",
+    "evidence": "founder-reported operator output ended with COMMIT; R4.2D",
+    "independentlyQueried": false
+  }
+}

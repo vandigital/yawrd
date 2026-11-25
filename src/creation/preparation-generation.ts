@@ -1,7 +1,7 @@
 import { creationActionEnabled, creationEnvironment } from './release-environment.ts';
 import 'server-only';
 import { PreparationRecoveryStore } from './preparation-recovery.ts';
-import { RECOVERY_LIMITS,RECOVERY_CONSENT } from './preparation-generation-contract.ts';
+import { RECOVERY_LIMITS,RECOVERY_CONSENT,ORIGINAL_LIMITS,HOSTED_SOL_LIMITS,HOSTED_SOL_PROMPT } from './preparation-generation-contract.ts';
 import { randomUUID } from 'node:crypto';
 import type { Query } from '../participants/database.ts';
 import { fail, WorkflowError } from '../participants/repository.ts';
@@ -15,14 +15,16 @@ import { GENERATION_CONSENT,PREMIUM_CONSENT,PREPARATION_PROMPT,QWEN_MODEL,PREMIU
 export const PREMIUM_TEST_BINDING=Object.freeze({creationId:'yawrd-uorgr4yy5sxu',founderAccountId:'yawrd1.testnet',daoAccountId:'xfheozm6d1tb.factory.yawrd.testnet'});
 type Environment=Record<string,string|undefined>;
 export function generationPolicy(binding:PreparationBinding,env:Environment=process.env){
-  const premium=creationEnvironment(env)==='development'&&env.YAWRD_ENABLE_CREATION_PREMIUM_TEST==='1'&&binding.creationId===PREMIUM_TEST_BINDING.creationId&&binding.founderAccountId===PREMIUM_TEST_BINDING.founderAccountId&&binding.daoAccountId===PREMIUM_TEST_BINDING.daoAccountId;
-  return {enabled:creationActionEnabled('generation',env)&&(env.YAWRD_ENABLE_CREATION_PREMIUM_TEST!=='1'||premium),model:(premium?PREMIUM_MODEL:QWEN_MODEL) as PreparationModel,
-    consentVersion:premium?PREMIUM_CONSENT:GENERATION_CONSENT,partnerProvider:premium};
+  const mode=creationEnvironment(env),hosted=mode==='preview-testnet'||mode==='production-testnet';
+  const premium=mode==='development'&&env.YAWRD_ENABLE_CREATION_PREMIUM_TEST==='1'&&binding.creationId===PREMIUM_TEST_BINDING.creationId&&binding.founderAccountId===PREMIUM_TEST_BINDING.founderAccountId&&binding.daoAccountId===PREMIUM_TEST_BINDING.daoAccountId;
+  return {enabled:creationActionEnabled('generation',env)&&(env.YAWRD_ENABLE_CREATION_PREMIUM_TEST!=='1'||premium),model:(hosted||premium?PREMIUM_MODEL:QWEN_MODEL) as PreparationModel,
+    consentVersion:hosted||premium?PREMIUM_CONSENT:GENERATION_CONSENT,partnerProvider:hosted||premium,hosted,
+    promptVersion:hosted?HOSTED_SOL_PROMPT:PREPARATION_PROMPT,limits:hosted?HOSTED_SOL_LIMITS:ORIGINAL_LIMITS};
 }
 export class PreparationAttemptStore{
   constructor(query:Query){this.query=query;}
   private readonly query:Query;
-  async available(){
+  async available(hosted=false){
     const [row]=await this.query(`SELECT to_regclass('yawrd.creation_preparation_attempts') IS NOT NULL
       AND to_regprocedure('yawrd.creation_preparation_attempt_read(text,text)') IS NOT NULL
       AND to_regprocedure('yawrd.creation_preparation_reserve(text,text,uuid,bigint,text,text,text,text,text)') IS NOT NULL
@@ -31,7 +33,10 @@ export class PreparationAttemptStore{
       AND EXISTS(SELECT 1 FROM pg_catalog.pg_trigger
         WHERE tgrelid=to_regclass('yawrd.creation_drafts') AND tgname='guard_creation_intake_preparation'
           AND tgfoid=to_regprocedure('yawrd.creation_intake_preparation_guard()')
-          AND tgenabled IN ('O','A') AND NOT tgisinternal) AS installed`);
+          AND tgenabled IN ('O','A') AND NOT tgisinternal)
+      AND (NOT $1::boolean OR EXISTS(SELECT 1 FROM pg_catalog.pg_constraint
+        WHERE conrelid=to_regclass('yawrd.creation_preparation_attempts')
+          AND conname='creation_preparation_hosted_sol_budget' AND convalidated)) AS installed`,[hosted]);
     return row?.installed===true;
   }
   private async run(sql:string,args:unknown[]){
@@ -46,9 +51,9 @@ export class PreparationAttemptStore{
   async read(hash:string,id:string):Promise<GenerationAttempt|null>{
     const [row]=await this.run('SELECT yawrd.creation_preparation_attempt_read($1,$2) AS attempt',[hash,id]);return (row?.attempt??null) as GenerationAttempt|null;
   }
-  async reserve(hash:string,id:string,attempt:string,context:PreparationContext,model:PreparationModel,consent:string,requestDigest:string){
+  async reserve(hash:string,id:string,attempt:string,context:PreparationContext,model:PreparationModel,consent:string,requestDigest:string,promptVersion:string=PREPARATION_PROMPT){
     const [row]=await this.run('SELECT yawrd.creation_preparation_reserve($1,$2,$3::uuid,$4,$5,$6,$7,$8,$9) AS won',
-      [hash,id,attempt,context.provenance.creationRevision,JSON.stringify(context),model,PREPARATION_PROMPT,consent,requestDigest]);return row?.won===true;
+      [hash,id,attempt,context.provenance.creationRevision,JSON.stringify(context),model,promptVersion,consent,requestDigest]);return row?.won===true;
   }
   async stage(hash:string,id:string,attempt:string,state:string,usage:GenerationUsage|null=null,error:string|null=null){
     await this.run('SELECT yawrd.creation_preparation_stage($1,$2,$3::uuid,$4,$5::jsonb,$6)',[hash,id,attempt,state,usage?JSON.stringify(usage):null,error]);
@@ -65,10 +70,10 @@ export class PreparationGenerationService{
   private readonly query:Query;private readonly options:Options;
   async view(hash:string,id:string,original?:PreparationView):Promise<GeneratedPreparationView>{
     let view=original??await this.repo.read(hash,id);
-    const policy=generationPolicy(view.binding,this.options.env),installed=await this.store.available();
+    const policy=generationPolicy(view.binding,this.options.env),installed=await this.store.available(policy.hosted);
     let attempt=installed?observedAttempt(await this.store.read(hash,id),(this.options.now??Date.now)()):null;
     let recovery:import('./preparation-generation-contract.ts').GenerationView['recovery'];
-    if(attempt?.state==='failed'&&attempt.model===PREMIUM_MODEL){
+    if(creationEnvironment(this.options.env)==='development'&&attempt?.state==='failed'&&attempt.model===PREMIUM_MODEL){
       const available=await this.recovery.available();
       const record=available?await this.recovery.read(hash,id):null;
       recovery={installed:available,canRecover:!!(record?.eligible&&policy.enabled&&policy.partnerProvider&&!view.versions.length),originalAttempt:record?.originalAttempt??attempt,attempt:record?.attempt?observedAttempt(record.attempt,(this.options.now??Date.now)()):null};
@@ -78,12 +83,12 @@ export class PreparationGenerationService{
     // "saved" with an earlier empty artifact projection and stop the browser poll.
     if(attempt?.state==='saved'&&!view.versions.some(v=>v.revision===attempt.resultRevision))view=await this.repo.read(hash,id);
     const canGenerate=installed&&policy.enabled&&!attempt&&!view.versions.length;
-    return {...view,generationEnabled:canGenerate,generation:{installed,canGenerate,model:attempt?.model??policy.model,consentVersion:policy.consentVersion,partnerProvider:attempt?attempt.model===PREMIUM_MODEL:policy.partnerProvider,
-      attempt,inputBytesLimit:24000,outputTokensLimit:recovery?.canRecover||recovery?.attempt?16000:8000,providerTimeoutMs:recovery?.canRecover||recovery?.attempt?420000:180000,allowance:1,...(recovery?{recovery}:{})}};
+    return {...view,generationEnabled:canGenerate,generation:{installed,canGenerate,model:attempt?.model??policy.model,consentVersion:attempt?(attempt.model===PREMIUM_MODEL?PREMIUM_CONSENT:GENERATION_CONSENT):policy.consentVersion,partnerProvider:attempt?attempt.model===PREMIUM_MODEL:policy.partnerProvider,
+      attempt,inputBytesLimit:24000,outputTokensLimit:recovery?.canRecover||recovery?.attempt?16000:attempt?(attempt.outputTokensLimit??8000):policy.limits.outputTokens,providerTimeoutMs:recovery?.canRecover||recovery?.attempt?420000:attempt?(attempt.providerTimeoutMs??180000):policy.limits.providerTimeoutMs,allowance:1,...(recovery?{recovery}:{})}};
   }
   async recover(hash:string,id:string,consent:unknown,consentVersion:unknown){
     const original=await this.repo.read(hash,id),policy=generationPolicy(original.binding,this.options.env);
-    fail(policy.enabled&&policy.partnerProvider&&policy.model===PREMIUM_MODEL,'recovery_not_eligible',403);
+    fail(creationEnvironment(this.options.env)==='development'&&policy.enabled&&policy.partnerProvider&&policy.model===PREMIUM_MODEL,'recovery_not_eligible',403);
     fail(consent===true&&consentVersion===RECOVERY_CONSENT,'generation_consent_required');
     const view=await this.view(hash,id,original);
     fail(view.generation.recovery?.installed,'recovery_storage_required',503);
@@ -116,13 +121,13 @@ export class PreparationGenerationService{
     if(view.generation.attempt)return view;
     fail(!view.versions.length,'generation_allowance_used',409);
     const source=await (this.options.source??((s,i,b)=>readPreparationContext(this.query,s,i,b)))(hash,id,original.binding);
-    const wire=preparationWire(source,policy.model);
+    const wire=preparationWire(source,policy.model,policy.limits);
     const key=(this.options.key??(()=>process.env.YAWRD_NEAR_AI_API_KEY))();fail(key,'provider_credentials_missing',503);
-    const attempt=randomUUID(),won=await this.store.reserve(hash,id,attempt,source,policy.model,policy.consentVersion,preparationDigest(wire.body));
+    const attempt=randomUUID(),won=await this.store.reserve(hash,id,attempt,source,policy.model,policy.consentVersion,preparationDigest(wire.body),policy.promptVersion);
     if(!won)return this.view(hash,id);
     try{
       await this.store.stage(hash,id,attempt,'waiting');
-      const result=await (this.options.provider??generatePreparation)(source,policy.model,key,()=>this.store.stage(hash,id,attempt,'checking'));
+      const result=await (this.options.provider??generatePreparation)(source,policy.model,key,()=>this.store.stage(hash,id,attempt,'checking'),undefined,policy.limits);
       if(!result.artifacts){await this.store.stage(hash,id,attempt,'failed',result.usage,result.failure);return this.view(hash,id);}
       await this.store.complete(hash,id,attempt,result);
     }catch(e){

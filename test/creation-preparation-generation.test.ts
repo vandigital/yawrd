@@ -11,7 +11,7 @@ import { PreparationGenerationService,generationPolicy,PREMIUM_TEST_BINDING } fr
 import { generatePreparation,preparationWire,parsePreparation,premiumMatches } from '../src/creation/preparation-provider.ts';
 import { preparationRequest } from '../src/creation/preparation-http.ts';
 import { preparationDigest,preparationText,PreparationRepository } from '../src/creation/preparation-repository.ts';
-import { QWEN_MODEL,PREMIUM_MODEL,PREPARATION_PROMPT,GENERATION_CONSENT,PREMIUM_CONSENT,observedAttempt,type GenerationUsage,type GenerationAttempt } from '../src/creation/preparation-generation-contract.ts';
+import { QWEN_MODEL,PREMIUM_MODEL,PREPARATION_PROMPT,GENERATION_CONSENT,PREMIUM_CONSENT,observedAttempt,HOSTED_SOL_LIMITS,HOSTED_SOL_PROMPT,type GenerationUsage,type GenerationAttempt } from '../src/creation/preparation-generation-contract.ts';
 import type { PrivateCreation } from '../src/creation/repository.ts';
 import { CreationRepository } from '../src/creation/repository.ts';
 import { creationRequest } from '../src/creation/http.ts';
@@ -33,15 +33,15 @@ const usage=(model:typeof QWEN_MODEL|typeof PREMIUM_MODEL=QWEN_MODEL):Generation
 function completion(overrides:object={}){return {id:'completion_offline',object:'chat.completion',model:QWEN_MODEL,choices:[{finish_reason:'stop',message:{role:'assistant',content:JSON.stringify(artifacts())}}],usage:{prompt_tokens:100,completion_tokens:1000,total_tokens:1100,completion_tokens_details:{reasoning_tokens:0}},...overrides};}
 function response(overrides:object={}){return {id:'resp_offline',object:'response',model:'gpt-6.1-sol',status:'completed',output:[{type:'reasoning',summary:[{text:'PRIVATE REASONING'}]},{type:'message',role:'assistant',status:'completed',content:[{type:'output_text',text:JSON.stringify(artifacts())}]}],usage:{input_tokens:100,output_tokens:1000,total_tokens:1100,output_tokens_details:{reasoning_tokens:10}},...overrides};}
 
-function harness(premium=false){
+function harness(premium=false,environment?:Record<string,string|undefined>){
   const scope=premium?{...binding,...PREMIUM_TEST_BINDING}:binding;
   const stored=preparationView('a'.repeat(64));stored.versions=[];stored.binding=scope;
   const creation={...sourceCreation(),id:scope.creationId,founderAccountId:scope.founderAccountId},calls:string[]=[],sessions=new Map([[hash,scope.founderAccountId],[sessionHash('b'.repeat(43))!,'other.testnet'],[sessionHash('s'.repeat(43))!,'steward.testnet']]);
-  let installed=true,paid=true,bump=false,failComplete=false,providerCalls=0,record:GenerationAttempt|null=null,sourceText='';
+  let installed=true,compatible=true,paid=true,bump=false,failComplete=false,providerCalls=0,record:GenerationAttempt|null=null,sourceText='';
   const query:Query=async(sql,args=[])=>{
     calls.push(sql);const actor=sessions.get(String(args[0]));
     if(sql.includes("to_regclass('yawrd.creation_preparation_recoveries')"))return [{installed:false}];
-    if(sql.startsWith('SELECT to_regclass'))return [{installed}];
+    if(sql.startsWith('SELECT to_regclass'))return [{installed:installed&&(!args[0]||compatible)}];
     if(sql.startsWith('SELECT account_id'))return actor?[{account_id:actor}]:[];
     if(!actor)throw {code:'P0001',message:'sign_in_required'};
     if(actor!==scope.founderAccountId||args[1]!==scope.creationId)throw {code:'P0001',message:'creation_not_found'};
@@ -64,7 +64,8 @@ function harness(premium=false){
     if(sql.includes('creation_preparation_reserve')){
       if(record)return [{won:false}];if(bump)creation.revision++;
       if(args[3]!==creation.revision)throw {code:'P0001',message:'generation_source_changed'};
-      sourceText=String(args[4]);record={id:String(args[2]),state:'reserved',model:args[5] as typeof QWEN_MODEL,sourceDigest:preparationDigest(sourceText),reservedAt:new Date().toISOString(),dispatchedAt:null,responseAt:null,finishedAt:null,deadlineAt:new Date(Date.now()+210000).toISOString(),errorCode:null,resultRevision:null,usage:null};return [{won:true}];
+      const hosted=args[6]===HOSTED_SOL_PROMPT;
+      sourceText=String(args[4]);record={id:String(args[2]),state:'reserved',model:args[5] as typeof QWEN_MODEL,sourceDigest:preparationDigest(sourceText),reservedAt:new Date().toISOString(),dispatchedAt:null,responseAt:null,finishedAt:null,deadlineAt:new Date(Date.now()+(hosted?270000:210000)).toISOString(),outputTokensLimit:hosted?16000:8000,providerTimeoutMs:hosted?240000:180000,errorCode:null,resultRevision:null,usage:null};return [{won:true}];
     }
     if(sql.includes('creation_preparation_stage')){
       assert.equal(record?.id,args[2]);if(['saved','failed','unknown'].includes(record!.state))return [];
@@ -81,10 +82,10 @@ function harness(premium=false){
     throw Error('Unexpected fixture query');
   };
   const fakeProvider:typeof generatePreparation=async(_context,model,_key,progress)=>{providerCalls++;await progress();return {artifacts:artifacts(),usage:usage(model),failure:null};};
-  const options={env:{NODE_ENV:'development',YAWRD_ENABLE_CREATION_PREPARATION:'1',...(premium?{YAWRD_ENABLE_CREATION_PREMIUM_TEST:'1'}:{})},key:()=> 'offline-placeholder',provider:fakeProvider};
+  const options={env:environment??{NODE_ENV:'development',YAWRD_ENABLE_CREATION_PREPARATION:'1',...(premium?{YAWRD_ENABLE_CREATION_PREMIUM_TEST:'1'}:{})},key:()=> 'offline-placeholder',provider:fakeProvider};
   const service=new PreparationGenerationService(query,options);
   const send=(data?:object,t=token,account=scope.founderAccountId)=>preparationRequest(new Request(origin+'/api/creations/'+scope.creationId+'/preparation',{method:data?'POST':'GET',headers:{host:'yawrd.example',origin,cookie:SESSION_COOKIE+'='+t,'x-yawrd-account':account,...(data?{'content-type':'application/json'}:{})},body:data?JSON.stringify(data):undefined}),scope.creationId,query,origin,service);
-  return {query,service,options,stored,calls,sessions,creation,send,id:scope.creationId,get record(){return record;},get providerCalls(){return providerCalls;},get sourceText(){return sourceText;},uninstall:()=>{installed=false;},unpay:()=>{paid=false;},bumpSource:()=>{bump=true;},failStorage:()=>{failComplete=true;}};
+  return {query,service,options,stored,calls,sessions,creation,send,id:scope.creationId,get record(){return record;},get providerCalls(){return providerCalls;},get sourceText(){return sourceText;},uninstall:()=>{installed=false;},withoutCompatibility:()=>{compatible=false;},unpay:()=>{paid=false;},bumpSource:()=>{bump=true;},failStorage:()=>{failComplete=true;}};
 }
 
 test('source-aware preparation preserves verbatim founder paragraphs, categories, fact freshness and private/public boundaries',async()=>{
@@ -297,8 +298,8 @@ test('controlled premium API requires partner consent, writes a genuine-result-s
 test('preparation presentation distinguishes planned premium, disabled configuration and consent-gated server model',()=>{
   const base={installed:true,canGenerate:false,model:QWEN_MODEL,consentVersion:GENERATION_CONSENT,partnerProvider:false,attempt:null,inputBytesLimit:24000,outputTokensLimit:8000,providerTimeoutMs:180000,allowance:1} as const;
   const render=(generation:any)=>renderToStaticMarkup(createElement(GenerationProgress,{generation,running:false,onGenerate:()=>{throw Error('render dispatched');},onCheck:()=>{}}));
-  const disabled=render(base);assert.match(disabled,/Planned first controlled test: GPT-6.1 Sol/);assert.match(disabled,/Configured model \(requests disabled\).*Qwen/);assert.match(disabled,/<button[^>]*disabled=""[^>]*>Prepare my Blueprint/);assert.match(disabled,/separately activated/);
-  const qwen=render({...base,canGenerate:true});assert.match(qwen,/Server-selected model: Qwen/);assert.match(qwen,/not the planned GPT premium test/);assert.match(qwen,/disabled=""/);
+  const disabled=render(base);assert.doesNotMatch(disabled,/Planned first controlled test/);assert.match(disabled,/Configured model \(requests disabled\).*Qwen/);assert.match(disabled,/<button[^>]*disabled=""[^>]*>Prepare my Blueprint/);assert.match(disabled,/separately activated/);
+  const qwen=render({...base,canGenerate:true});assert.match(qwen,/Server-selected model: Qwen/);assert.match(qwen,/uses Qwen on NEAR AI Cloud/);assert.match(qwen,/disabled=""/);
   const premium=render({...base,canGenerate:true,model:PREMIUM_MODEL,partnerProvider:true});assert.match(premium,/OpenAI, a partner provider/);assert.match(premium,/no automatic retry/);assert.match(premium,/Provider charges may apply/);assert.doesNotMatch(premium,/selected model is Qwen/);
 });
 test('deadline-derived uncertainty is read-only; progress checklist renders only actual persisted observations',()=>{
@@ -311,4 +312,75 @@ test('SQL proposal adds one finite attempt table and atomic generated-original w
   const sql=readFileSync(new URL('../docs/proposals/migrations/phase2_creation_preparation_generation.sql',import.meta.url),'utf8');assert.doesNotMatch(sql,/ALTER TABLE|DROP |UPDATE yawrd\.creation_platform_fees|SECURITY DEFINER/);
   for(const s of ['creation_id text PRIMARY KEY','allowance=1','output_token_limit=8000','provider_timeout_ms=180000','creation_preparation_access(_session,_id)','generation_source_changed','source_text','source_digest','origin,author_account_id,generation,artifact_text','ON yawrd.creation_preparation_attempts TO yawrd_07b_runtime'])assert.ok(sql.includes(s),s);
   assert.doesNotMatch(sql,/GRANT UPDATE\([^)]*(source_text|model|reserved_at)|GRANT DELETE|GRANT TRUNCATE/);
+});
+
+const hostedEnvironment=(mode='preview-testnet')=>({NODE_ENV:'production',VERCEL_ENV:mode==='preview-testnet'?'preview':'production',
+  YAWRD_ENABLE_CREATION_TESTNET_BETA:'1',YAWRD_CREATION_ENVIRONMENT:mode,
+  YAWRD_APP_ORIGIN:mode==='preview-testnet'?'https://yawrd-hosted-test.vercel.app':'https://yawrd.keelbase.io',YAWRD_ENABLE_CREATION_PREPARATION:'1'});
+test('hosted Preview and Production pin Sol, partner consent, prompt and bounded limits behind existing release gates',()=>{
+  for(const mode of ['preview-testnet','production-testnet']){
+    const env=hostedEnvironment(mode),p=generationPolicy(binding,env);
+    assert.equal(p.enabled,true);assert.equal(p.model,PREMIUM_MODEL);assert.equal(p.partnerProvider,true);
+    assert.equal(p.consentVersion,PREMIUM_CONSENT);assert.equal(p.promptVersion,HOSTED_SOL_PROMPT);assert.deepEqual(p.limits,HOSTED_SOL_LIMITS);
+    for(const disabled of [{...env,YAWRD_ENABLE_CREATION_PREPARATION:'0'},{...env,YAWRD_ENABLE_CREATION_TESTNET_BETA:'0'},
+      {...env,YAWRD_APP_ORIGIN:'http://untrusted.invalid'},{...env,YAWRD_ENABLE_CREATION_PREMIUM_TEST:'1'},{...env,VERCEL_ENV:'development'}])
+      assert.equal(generationPolicy(binding,disabled).enabled,false);
+  }
+});
+test('hosted Sol dispatches one Responses request with 16000 including reasoning and a 240 second timeout, then saves for review',async()=>{
+  for(const mode of ['preview-testnet','production-testnet']){
+    const h=harness(false,hostedEnvironment(mode));let calls=0;
+    const timer=mock.method(AbortSignal,'timeout',(ms:number)=>{assert.equal(ms,240000);return new AbortController().signal;});
+    h.options.provider=async(c,m,k,p,_t,limits)=>generatePreparation(c,m,k,p,async(url,options)=>{
+      calls++;assert.equal(url,'https://cloud-api.near.ai/v1/responses');const b=JSON.parse(String(options?.body));
+      assert.equal(b.model,PREMIUM_MODEL);assert.equal(b.max_output_tokens,16000);assert.equal(b.store,false);assert.equal(b.stream,false);assert.deepEqual(b.tools,[]);
+      assert.match(b.instructions,/creation-hosted-sol-v1/);assert.doesNotMatch(b.instructions,/creation-source-aware-recovery-v1/);
+      assert.equal('messages' in b,false);assert.equal('chat_template_kwargs' in b,false);
+      return Response.json(response({usage:{input_tokens:100,output_tokens:16000,total_tokens:16100,output_tokens_details:{reasoning_tokens:9000}}}));
+    },limits);
+    try{
+      const before=await h.service.view(hash,h.id);assert.equal(before.generation.canGenerate,true);assert.equal(before.generation.outputTokensLimit,16000);assert.equal(before.generation.providerTimeoutMs,240000);
+      assert.equal((await h.send({action:'generate',consent:true,consentVersion:GENERATION_CONSENT})).status,400);assert.equal(calls,0);
+      const view=await(await h.send({action:'generate',consent:true,consentVersion:PREMIUM_CONSENT})).json();
+      assert.equal(view.generation.attempt.state,'saved');assert.equal(view.generation.model,PREMIUM_MODEL);assert.equal(view.versions[0].approval,null);
+      assert.equal(view.generation.outputTokensLimit,16000);assert.equal(view.generation.providerTimeoutMs,240000);assert.equal(view.generation.recovery,undefined);
+      await h.send({action:'generate',consent:true,consentVersion:PREMIUM_CONSENT});assert.equal(calls,1);
+    }finally{timer.mock.restore();}
+  }
+});
+test('hosted provider rejection, over-budget output and ambiguous failure consume one claim without fallback, retry or recovery',async()=>{
+  for(const failure of [401,403,402,429,503,'transport','over-budget'] as const){
+    const h=harness(false,hostedEnvironment());let calls=0;
+    h.options.provider=async(c,m,k,p,_t,limits)=>generatePreparation(c,m,k,p,async url=>{
+      calls++;assert.equal(url,'https://cloud-api.near.ai/v1/responses');
+      if(failure==='transport')throw Error('PRIVATE transport detail');
+      return failure==='over-budget'?Response.json(response({usage:{input_tokens:100,output_tokens:16001,total_tokens:16101}})):new Response('PRIVATE provider detail',{status:failure});
+    },limits);
+    const result=await h.send({action:'generate',consent:true,consentVersion:PREMIUM_CONSENT});assert.equal(result.status,200);
+    const view=await result.json();assert.ok(['failed','unknown'].includes(view.generation.attempt.state));assert.equal(view.generation.canGenerate,false);assert.equal(view.generation.recovery,undefined);assert.equal(view.versions.length,0);
+    assert.doesNotMatch(JSON.stringify(view),/PRIVATE provider|PRIVATE transport/);
+    await h.send({action:'generate',consent:true,consentVersion:PREMIUM_CONSENT});assert.equal(calls,1);
+    assert.equal((await h.send({action:'recover',consent:true,consentVersion:'creation-partner-recovery-v1'})).status,403);assert.equal(calls,1);
+  }
+});
+test('hosted readiness, payment, verified identity and missing credentials fail before dispatch',async()=>{
+  for(const condition of ['schema','payment','key','foreign','mismatch']){
+    const h=harness(false,hostedEnvironment());if(condition==='schema')h.withoutCompatibility();if(condition==='payment')h.unpay();if(condition==='key')h.options.key=()=>undefined as any;
+    const r=await h.send({action:'generate',consent:true,consentVersion:PREMIUM_CONSENT},condition==='foreign'?'b'.repeat(43):token,condition==='foreign'||condition==='mismatch'?'other.testnet':'founder.testnet');
+    assert.ok([401,403,404,409,503].includes(r.status));assert.equal(h.providerCalls,0);assert.equal(h.record,null);
+  }
+});
+test('historical Qwen model, consent, limits, timestamps and saved version remain truthful after switching to hosted Sol policy',async()=>{
+  const h=harness();await h.send({action:'generate',consent:true,consentVersion:GENERATION_CONSENT});const original=structuredClone(h.record),versions=structuredClone(h.stored.versions);
+  h.options.env=hostedEnvironment();const view=await h.service.view(hash,h.id);
+  assert.equal(view.generation.model,QWEN_MODEL);assert.equal(view.generation.consentVersion,GENERATION_CONSENT);assert.equal(view.generation.partnerProvider,false);
+  assert.equal(view.generation.outputTokensLimit,8000);assert.equal(view.generation.providerTimeoutMs,180000);assert.equal(view.generation.canGenerate,false);
+  assert.deepEqual(view.generation.attempt,original);assert.deepEqual(view.versions,versions);assert.equal(h.providerCalls,1);
+});
+test('hosted UI reports actual Sol provider, consent, output budget, timeout and persisted observation deadline',()=>{
+  const render=(generation:any)=>renderToStaticMarkup(createElement(GenerationProgress,{generation,running:false,onGenerate:()=>{},onCheck:()=>{}}));
+  const g={installed:true,canGenerate:true,model:PREMIUM_MODEL,consentVersion:PREMIUM_CONSENT,partnerProvider:true,attempt:null,inputBytesLimit:24000,outputTokensLimit:16000,providerTimeoutMs:240000,allowance:1};
+  const before=render(g);for(const text of ['openai/gpt-6.1-sol','OpenAI through NEAR AI Cloud','16,000','240 seconds','no automatic retry'])assert.ok(before.includes(text),text);assert.doesNotMatch(before,/Qwen|planned first controlled/i);
+  const deadline=new Date(Date.now()+270000).toISOString();const during=render({...g,canGenerate:false,attempt:{id:'offline',model:PREMIUM_MODEL,state:'waiting',reservedAt:new Date().toISOString(),dispatchedAt:new Date().toISOString(),deadlineAt:deadline}});
+  assert.ok(during.includes(deadline));assert.match(during,/Observation deadline/);
 });
